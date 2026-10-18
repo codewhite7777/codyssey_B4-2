@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" width="960" height="600" font-family="'Noto Sans CJK KR', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker>
+  </defs>
+  <rect width="960" height="600" rx="16" fill="#ffffff"/>
+  <text x="480" y="44" text-anchor="middle" font-size="24" font-weight="700" fill="#0f172a">어떤 장애인지 구분하는 순서</text>
+  <text x="480" y="70" text-anchor="middle" font-size="14" fill="#64748b">"살아있나?" → "일하고 있나?" → "로그가 어디서 멈췄나?" 세 가지만 차례로 확인한다</text>
+
+  <g text-anchor="middle">
+    <!-- start -->
+    <rect x="330" y="88" width="300" height="44" rx="22" fill="#f1f5f9" stroke="#cbd5e1"/>
+    <text x="480" y="116" font-size="14.5" fill="#0f172a" font-weight="700">앱이 이상하다 (응답 없음 / 꺼짐)</text>
+    <!-- Q1 -->
+    <rect x="290" y="160" width="380" height="64" rx="12" fill="#eff6ff" stroke="#3b82f6" stroke-width="2"/>
+    <text x="480" y="186" font-size="15" fill="#1e3a8a" font-weight="700">① 프로세스가 살아있나? (PID 존재)</text>
+    <text x="480" y="210" font-size="13" fill="#2563eb" font-family="monospace">ps -ef | grep agent</text>
+    <!-- Q2 left -->
+    <rect x="40" y="270" width="380" height="64" rx="12" fill="#eff6ff" stroke="#3b82f6" stroke-width="2"/>
+    <text x="230" y="296" font-size="15" fill="#1e3a8a" font-weight="700">② 죽기 직전 마지막 로그는?</text>
+    <text x="230" y="320" font-size="13" fill="#2563eb">tail -n 20 앱 로그</text>
+    <!-- Q3 right -->
+    <rect x="540" y="270" width="380" height="64" rx="12" fill="#eff6ff" stroke="#3b82f6" stroke-width="2"/>
+    <text x="730" y="296" font-size="15" fill="#1e3a8a" font-weight="700">③ 스레드가 일을 하고 있나?</text>
+    <text x="730" y="320" font-size="13" fill="#2563eb" font-family="monospace">top -H -p PID  /  ps -L -p PID</text>
+    <!-- result cards left -->
+    <rect x="40" y="410" width="180" height="96" rx="12" fill="#fef2f2" stroke="#fca5a5" stroke-width="2"/>
+    <text x="130" y="440" font-size="16" fill="#b91c1c" font-weight="700">OOM</text>
+    <text x="130" y="464" font-size="12" fill="#7f1d1d">MemoryGuard</text>
+    <text x="130" y="484" font-size="12" fill="#7f1d1d">SELF-TERMINATED</text>
+    <rect x="240" y="410" width="180" height="96" rx="12" fill="#fffbeb" stroke="#fcd34d" stroke-width="2"/>
+    <text x="330" y="440" font-size="16" fill="#b45309" font-weight="700">CPU Spike</text>
+    <text x="330" y="464" font-size="12" fill="#78350f">WATCHDOG</text>
+    <text x="330" y="484" font-size="12" fill="#78350f">... SIGTERM</text>
+    <!-- Q4 right -->
+    <rect x="540" y="400" width="380" height="64" rx="12" fill="#eff6ff" stroke="#3b82f6" stroke-width="2"/>
+    <text x="730" y="426" font-size="15" fill="#1e3a8a" font-weight="700">④ 로그가 언제, 어디서 멈췄나?</text>
+    <text x="730" y="450" font-size="13" fill="#2563eb">tail 로그 → 마지막 시각 확인</text>
+    <!-- deadlock card -->
+    <rect x="540" y="506" width="380" height="72" rx="12" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/>
+    <text x="730" y="535" font-size="16" fill="#6d28d9" font-weight="700">Deadlock</text>
+    <text x="730" y="559" font-size="12.5" fill="#4c1d95">A는 1을 쥐고 2를 기다림 · B는 2를 쥐고 1을 기다림</text>
+  </g>
+
+  <!-- arrows -->
+  <g stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#a)">
+    <line x1="480" y1="132" x2="480" y2="156"/>
+    <path d="M290,192 L230,192 L230,266"/>
+    <path d="M670,192 L730,192 L730,266"/>
+    <path d="M150,334 L130,406"/>
+    <path d="M310,334 L330,406"/>
+    <line x1="730" y1="334" x2="730" y2="396"/>
+    <line x1="730" y1="464" x2="730" y2="502"/>
+  </g>
+  <g font-size="13" font-weight="700">
+    <text x="240" y="248" fill="#dc2626">아니오 (꺼짐)</text>
+    <text x="740" y="248" fill="#059669">예 (살아있음)</text>
+    <text x="128" y="376" text-anchor="end" fill="#b91c1c" font-size="12">"Memory limit"</text>
+    <text x="338" y="376" fill="#b45309" font-size="12">"WATCHDOG"</text>
+    <text x="742" y="370" fill="#334155" font-size="12.5">CPU 0% · 수치 변화 없음</text>
+    <text x="742" y="488" fill="#334155" font-size="12.5">WAITING / BLOCKED 에서 정지</text>
+  </g>
+  <!-- side note -->
+  <g transform="translate(40,530)">
+    <rect width="380" height="48" rx="10" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="16" y="21" font-size="12.5" fill="#475569">살아있는데 CPU가 계속 높다면? → 멈춘 게 아니라</text>
+    <text x="16" y="39" font-size="12.5" fill="#475569">CPU를 과하게 쓰는 중 (② CPU Spike 쪽으로 확인)</text>
+  </g>
+</svg>

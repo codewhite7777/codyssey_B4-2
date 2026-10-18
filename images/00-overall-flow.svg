@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 500" width="960" height="500" font-family="'Noto Sans CJK KR', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+  <rect width="960" height="500" rx="16" fill="#ffffff"/>
+
+  <text x="480" y="44" text-anchor="middle" font-size="24" font-weight="700" fill="#0f172a">장애 분석 전체 흐름</text>
+  <text x="480" y="70" text-anchor="middle" font-size="14" fill="#64748b">재부팅부터 하지 않는다 → 증거를 먼저 남기고, 원인을 찾고, 고친 뒤 비교한다</text>
+
+  <!-- 6 steps -->
+  <g font-size="13" text-anchor="middle">
+    <g transform="translate(20,96)">
+      <rect width="140" height="112" rx="12" fill="#f1f5f9" stroke="#cbd5e1"/>
+      <circle cx="70" cy="26" r="15" fill="#334155"/><text x="70" y="31" fill="#fff" font-weight="700">1</text>
+      <text x="70" y="62" font-size="15" font-weight="700" fill="#0f172a">환경 준비</text>
+      <text x="70" y="82" fill="#475569">일반 사용자·환경변수</text>
+      <text x="70" y="100" fill="#2563eb" font-family="monospace" font-size="12">setup.sh</text>
+    </g>
+    <g transform="translate(176,96)">
+      <rect width="140" height="112" rx="12" fill="#eff6ff" stroke="#93c5fd"/>
+      <circle cx="70" cy="26" r="15" fill="#2563eb"/><text x="70" y="31" fill="#fff" font-weight="700">2</text>
+      <text x="70" y="62" font-size="15" font-weight="700" fill="#0f172a">실행 + 관제</text>
+      <text x="70" y="82" fill="#475569">상태를 주기적으로 기록</text>
+      <text x="70" y="100" fill="#2563eb" font-family="monospace" font-size="12">monitor.sh</text>
+    </g>
+    <g transform="translate(332,96)">
+      <rect width="140" height="112" rx="12" fill="#eff6ff" stroke="#93c5fd"/>
+      <circle cx="70" cy="26" r="15" fill="#2563eb"/><text x="70" y="31" fill="#fff" font-weight="700">3</text>
+      <text x="70" y="62" font-size="15" font-weight="700" fill="#0f172a">증거 수집</text>
+      <text x="70" y="82" fill="#475569">PID·시각·핵심 로그</text>
+      <text x="70" y="100" fill="#2563eb" font-family="monospace" font-size="12">ps · top · tail</text>
+    </g>
+    <g transform="translate(488,96)">
+      <rect width="140" height="112" rx="12" fill="#eff6ff" stroke="#93c5fd"/>
+      <circle cx="70" cy="26" r="15" fill="#2563eb"/><text x="70" y="31" fill="#fff" font-weight="700">4</text>
+      <text x="70" y="62" font-size="15" font-weight="700" fill="#0f172a">원인 분석</text>
+      <text x="70" y="82" fill="#475569">왜 죽었나 / 멈췄나</text>
+      <text x="70" y="100" fill="#2563eb" font-size="12">OS 동작 원리</text>
+    </g>
+    <g transform="translate(644,96)">
+      <rect width="140" height="112" rx="12" fill="#ecfdf5" stroke="#6ee7b7"/>
+      <circle cx="70" cy="26" r="15" fill="#059669"/><text x="70" y="31" fill="#fff" font-weight="700">5</text>
+      <text x="70" y="62" font-size="15" font-weight="700" fill="#0f172a">임시 조치</text>
+      <text x="70" y="82" fill="#475569">환경변수 값 변경</text>
+      <text x="70" y="100" fill="#059669" font-family="monospace" font-size="12">export ...</text>
+    </g>
+    <g transform="translate(800,96)">
+      <rect width="140" height="112" rx="12" fill="#ecfdf5" stroke="#6ee7b7"/>
+      <circle cx="70" cy="26" r="15" fill="#059669"/><text x="70" y="31" fill="#fff" font-weight="700">6</text>
+      <text x="70" y="62" font-size="15" font-weight="700" fill="#0f172a">결과 확인</text>
+      <text x="70" y="82" fill="#475569">Before ↔ After</text>
+      <text x="70" y="100" fill="#059669" font-size="12">→ GitHub Issue</text>
+    </g>
+  </g>
+  <g stroke="#94a3b8" stroke-width="2" marker-end="url(#arr)">
+    <line x1="161" y1="152" x2="173" y2="152"/>
+    <line x1="317" y1="152" x2="329" y2="152"/>
+    <line x1="473" y1="152" x2="485" y2="152"/>
+    <line x1="629" y1="152" x2="641" y2="152"/>
+    <line x1="785" y1="152" x2="797" y2="152"/>
+  </g>
+
+  <text x="480" y="252" text-anchor="middle" font-size="15" font-weight="700" fill="#334155">이 흐름을 3가지 장애에 똑같이 적용한다</text>
+
+  <!-- 3 cases -->
+  <g font-size="13">
+    <g transform="translate(20,270)">
+      <rect width="296" height="206" rx="14" fill="#fef2f2" stroke="#fca5a5"/>
+      <text x="20" y="34" font-size="18" font-weight="700" fill="#b91c1c">① OOM (메모리 부족)</text>
+      <text x="20" y="66" fill="#64748b">보이는 증상</text><text x="110" y="66" fill="#0f172a">메모리가 계속 늘다가 꺼짐</text>
+      <text x="20" y="94" fill="#64748b">진짜 원인</text><text x="110" y="94" fill="#0f172a">메모리 누수 (안 치움)</text>
+      <text x="20" y="122" fill="#64748b">꺼뜨린 장치</text><text x="110" y="122" fill="#0f172a">MemoryGuard</text>
+      <text x="20" y="150" fill="#64748b">임시 조치</text><text x="110" y="150" fill="#0f172a" font-family="monospace">MEMORY_LIMIT ↑</text>
+      <rect x="20" y="166" width="256" height="26" rx="13" fill="#fee2e2"/>
+      <text x="148" y="184" text-anchor="middle" fill="#b91c1c" font-weight="700">SELF-TERMINATED</text>
+    </g>
+    <g transform="translate(332,270)">
+      <rect width="296" height="206" rx="14" fill="#fffbeb" stroke="#fcd34d"/>
+      <text x="20" y="34" font-size="18" font-weight="700" fill="#b45309">② CPU Spike (과점유)</text>
+      <text x="20" y="66" fill="#64748b">보이는 증상</text><text x="110" y="66" fill="#0f172a">CPU가 치솟다가 꺼짐</text>
+      <text x="20" y="94" fill="#64748b">진짜 원인</text><text x="110" y="94" fill="#0f172a">CPU를 혼자 독차지</text>
+      <text x="20" y="122" fill="#64748b">꺼뜨린 장치</text><text x="110" y="122" fill="#0f172a">Watchdog</text>
+      <text x="20" y="150" fill="#64748b">임시 조치</text><text x="110" y="150" fill="#0f172a" font-family="monospace">CPU_MAX_OCCUPY</text>
+      <rect x="20" y="166" width="256" height="26" rx="13" fill="#fef3c7"/>
+      <text x="148" y="184" text-anchor="middle" fill="#b45309" font-weight="700">WATCHDOG ... SIGTERM</text>
+    </g>
+    <g transform="translate(644,270)">
+      <rect width="296" height="206" rx="14" fill="#f5f3ff" stroke="#c4b5fd"/>
+      <text x="20" y="34" font-size="18" font-weight="700" fill="#6d28d9">③ Deadlock (교착상태)</text>
+      <text x="20" y="66" fill="#64748b">보이는 증상</text><text x="110" y="66" fill="#0f172a">살아는 있는데 멈춤</text>
+      <text x="20" y="94" fill="#64748b">진짜 원인</text><text x="110" y="94" fill="#0f172a">스레드끼리 서로 기다림</text>
+      <text x="20" y="122" fill="#64748b">꺼뜨린 장치</text><text x="110" y="122" fill="#0f172a">없음 → 영원히 대기</text>
+      <text x="20" y="150" fill="#64748b">임시 조치</text><text x="110" y="150" fill="#0f172a" font-family="monospace" font-size="11.5">MULTI_THREAD_ENABLE</text>
+      <rect x="20" y="166" width="256" height="26" rx="13" fill="#ede9fe"/>
+      <text x="148" y="184" text-anchor="middle" fill="#6d28d9" font-weight="700">WAITING ... BLOCKED</text>
+    </g>
+  </g>
+</svg>

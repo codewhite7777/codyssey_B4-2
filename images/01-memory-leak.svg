@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" width="960" height="540" font-family="'Noto Sans CJK KR', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748b"/></marker>
+  </defs>
+  <rect width="960" height="540" rx="16" fill="#ffffff"/>
+  <text x="480" y="44" text-anchor="middle" font-size="24" font-weight="700" fill="#0f172a">메모리 누수(Memory Leak) → OOM 강제 종료</text>
+  <text x="480" y="70" text-anchor="middle" font-size="14" fill="#64748b">쓰고 나서 반납하지 않은 메모리가 계속 쌓이면, 결국 한도에 닿는다</text>
+
+  <!-- LEFT: memory layout -->
+  <g transform="translate(30,96)">
+    <rect width="330" height="330" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="165" y="30" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">프로세스의 메모리 구조</text>
+    <g font-size="13" text-anchor="middle">
+      <rect x="40" y="48" width="150" height="40" rx="6" fill="#dbeafe" stroke="#93c5fd"/>
+      <text x="115" y="73" fill="#1e3a8a" font-weight="700">Stack ↓</text>
+      <rect x="40" y="92" width="150" height="46" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-dasharray="4 4"/>
+      <text x="115" y="120" fill="#94a3b8">빈 공간</text>
+      <!-- heap growing -->
+      <rect x="40" y="142" width="150" height="102" rx="6" fill="#fee2e2" stroke="#fca5a5"/>
+      <g fill="#f87171">
+        <rect x="50" y="210" width="40" height="24" rx="3"/><rect x="95" y="210" width="40" height="24" rx="3"/><rect x="140" y="210" width="40" height="24" rx="3"/>
+        <rect x="50" y="182" width="40" height="24" rx="3"/><rect x="95" y="182" width="40" height="24" rx="3"/><rect x="140" y="182" width="40" height="24" rx="3"/>
+        <rect x="50" y="154" width="40" height="24" rx="3" opacity=".55"/><rect x="95" y="154" width="40" height="24" rx="3" opacity=".55"/>
+      </g>
+      <text x="160" y="171" fill="#b91c1c" font-weight="700" font-size="12">Heap ↑</text>
+      <rect x="40" y="248" width="150" height="32" rx="6" fill="#e2e8f0"/>
+      <text x="115" y="269" fill="#334155">Data</text>
+      <rect x="40" y="284" width="150" height="32" rx="6" fill="#e2e8f0"/>
+      <text x="115" y="305" fill="#334155">Code</text>
+    </g>
+    <g font-size="12.5" fill="#334155">
+      <text x="204" y="164">힙 = 실행 중에</text>
+      <text x="204" y="182">필요할 때 빌리는 공간</text>
+      <text x="204" y="214" fill="#b91c1c" font-weight="700">빌리고 안 돌려줌</text>
+      <text x="204" y="232" fill="#b91c1c" font-weight="700">→ 계속 위로 쌓임</text>
+      <text x="204" y="264" fill="#64748b">= 메모리 누수</text>
+    </g>
+  </g>
+
+  <!-- RIGHT: chart -->
+  <g transform="translate(390,96)">
+    <rect width="540" height="330" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+    <text x="270" y="30" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">시간에 따른 메모리(RSS) 변화</text>
+    <!-- axes -->
+    <line x1="60" y1="290" x2="510" y2="290" stroke="#64748b" stroke-width="1.5" marker-end="url(#a)"/>
+    <line x1="60" y1="290" x2="60" y2="52" stroke="#64748b" stroke-width="1.5" marker-end="url(#a)"/>
+    <text x="500" y="314" font-size="12" fill="#64748b" text-anchor="end">시간 →</text>
+    <text x="52" y="60" font-size="12" fill="#64748b" text-anchor="end">MB</text>
+    <!-- limits -->
+    <line x1="60" y1="190" x2="500" y2="190" stroke="#ef4444" stroke-width="2" stroke-dasharray="7 5"/>
+    <text x="498" y="182" font-size="12.5" fill="#b91c1c" text-anchor="end" font-weight="700">MEMORY_LIMIT (작게)</text>
+    <line x1="60" y1="88" x2="500" y2="88" stroke="#10b981" stroke-width="2" stroke-dasharray="7 5"/>
+    <text x="498" y="80" font-size="12.5" fill="#047857" text-anchor="end" font-weight="700">MEMORY_LIMIT (크게)</text>
+    <!-- usage lines -->
+    <polyline points="60,272 120,252 180,232 240,212 300,190" fill="none" stroke="#ef4444" stroke-width="3.5" stroke-linejoin="round"/>
+    <polyline points="300,190 360,170 420,148 480,128" fill="none" stroke="#10b981" stroke-width="3" stroke-dasharray="2 6" stroke-linecap="round"/>
+    <!-- X marks -->
+    <g stroke="#b91c1c" stroke-width="4" stroke-linecap="round"><line x1="291" y1="181" x2="309" y2="199"/><line x1="309" y1="181" x2="291" y2="199"/></g>
+    <rect x="216" y="208" width="168" height="44" rx="8" fill="#fef2f2" stroke="#fca5a5"/>
+    <text x="300" y="227" text-anchor="middle" font-size="12.5" fill="#b91c1c" font-weight="700">MemoryGuard가</text>
+    <text x="300" y="244" text-anchor="middle" font-size="12.5" fill="#b91c1c" font-weight="700">스스로 강제 종료</text>
+    <text x="76" y="116" font-size="12" fill="#047857">한도를 올리면 더 오래 버팀</text>
+    <text x="76" y="132" font-size="12" fill="#047857">(하지만 계속 오른다 = 임시 조치)</text>
+    <text x="76" y="284" font-size="12" fill="#b91c1c">일직선으로 증가</text>
+  </g>
+
+  <!-- bottom notes -->
+  <g transform="translate(30,444)" font-size="14">
+    <rect width="440" height="76" rx="12" fill="#fffbeb" stroke="#fde68a"/>
+    <text x="20" y="30" font-weight="700" fill="#92400e">쉬운 비유</text>
+    <text x="20" y="54" fill="#334155">책상(메모리)에 서류를 꺼내기만 하고 치우지 않으면</text>
+    <text x="20" y="72" fill="#334155" dy="-2">언젠가 책상이 꽉 차서 일을 못 한다</text>
+  </g>
+  <g transform="translate(490,444)" font-size="14">
+    <rect width="440" height="76" rx="12" fill="#eff6ff" stroke="#bfdbfe"/>
+    <text x="20" y="30" font-weight="700" fill="#1e40af">왜 스스로 죽나?</text>
+    <text x="20" y="54" fill="#334155">놔두면 OS 전체 메모리가 바닥 → 스왑·OOM Killer로</text>
+    <text x="20" y="72" fill="#334155" dy="-2">다른 서비스까지 피해. 혼자 먼저 죽어 피해를 막는다</text>
+  </g>
+</svg>
