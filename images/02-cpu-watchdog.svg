@@ -14,7 +14,7 @@
     <rect x="30" y="60" width="140" height="120" rx="12" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>
     <text x="100" y="88" text-anchor="middle" font-size="13" fill="#92400e" font-weight="700">CPU</text>
     <rect x="48" y="102" width="104" height="58" rx="8" fill="#f59e0b"/>
-    <text x="100" y="127" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700">agent-leak-app</text>
+    <text x="100" y="127" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="700">범인 프로세스</text>
     <text x="100" y="146" text-anchor="middle" font-size="12" fill="#fff">사용 중 ~100%</text>
     <!-- queue -->
     <text x="270" y="72" text-anchor="middle" font-size="13" fill="#64748b">실행 대기열 (Run Queue)</text>
@@ -42,7 +42,7 @@
     <text x="48" y="80" font-size="11" fill="#94a3b8" text-anchor="end">100</text>
     <!-- threshold -->
     <line x1="56" y1="170" x2="460" y2="170" stroke="#ef4444" stroke-width="2" stroke-dasharray="7 5"/>
-    <text x="458" y="162" text-anchor="end" font-size="12.5" fill="#b91c1c" font-weight="700">CPU_MAX_OCCUPY (임계치)</text>
+    <text x="458" y="162" text-anchor="end" font-size="12.5" fill="#b91c1c" font-weight="700">Watchdog 기준 (이 앱은 약 50%)</text>
     <!-- usage -->
     <polyline points="56,272 110,268 150,270 175,260 200,120 230,84 260,80 290,82" fill="none" stroke="#f59e0b" stroke-width="3.5" stroke-linejoin="round"/>
     <rect x="200" y="74" width="92" height="96" fill="#fca5a5" opacity=".25"/>

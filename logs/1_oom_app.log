@@ -1,0 +1,10 @@
+2026-11-20 16:06:21,806 [INFO] [SafetyGuard] Process priority lowered (nice=10).
+2026-11-20 16:06:21,806 [INFO] Agent listening at port 15034
+2026-11-20 16:06:23,827 [INFO] [MemoryWorker] Current Heap: 25MB
+2026-11-20 16:06:26,852 [INFO] [MemoryWorker] Current Heap: 50MB
+2026-11-20 16:06:29,881 [INFO] [MemoryWorker] Current Heap: 75MB
+2026-11-20 16:06:32,908 [INFO] [MemoryWorker] Current Heap: 100MB
+2026-11-20 16:06:35,924 [INFO] [MemoryWorker] Current Heap: 125MB
+2026-11-20 16:06:38,954 [INFO] [MemoryWorker] Current Heap: 150MB
+2026-11-20 16:06:38,954 [CRITICAL] [MemoryGuard] Memory limit exceeded (150MB >= 128MB) / (Recommend Over 256MB)
+2026-11-20 16:06:38,955 [CRITICAL] [MemoryGuard] Self-terminating process 2363 to prevent system instability.
