@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800" font-family="'Noto Sans CJK KR', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif">
+  <defs>
+    <marker id="g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#059669"/></marker>
+    <marker id="r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#dc2626"/></marker>
+  </defs>
+  <rect width="1200" height="800" rx="16" fill="#ffffff"/>
+
+  <!-- ===== Header ===== -->
+  <text x="40" y="50" font-size="24" font-weight="700" fill="#0f172a">데드락은 이렇게 만들어졌다 — 실제 로그 시각으로 재구성</text>
+  <text x="40" y="78" font-size="14" fill="#64748b">logs/3_deadlock_app.log · PID 2916 · 스레드 3개 = 메인 스레드 1 + 일꾼 스레드 2 (Worker-Thread-1, Worker-Thread-2)</text>
+
+  <!-- ===== Timeline : column guides ===== -->
+  <g stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="3 5">
+    <line x1="270" y1="176" x2="270" y2="420"/>
+    <line x1="400" y1="176" x2="400" y2="420"/>
+    <line x1="560" y1="176" x2="560" y2="420"/>
+    <line x1="700" y1="176" x2="700" y2="420"/>
+  </g>
+  <line x1="1110" y1="176" x2="1110" y2="420" stroke="#94a3b8" stroke-width="2"/>
+
+  <!-- column heads -->
+  <g font-size="12.5" text-anchor="middle">
+    <circle cx="270" cy="118" r="13" fill="#059669"/><text x="270" y="123" fill="#fff" font-weight="700">1</text>
+    <text x="270" y="150" fill="#0f172a" font-weight="700">40.742초</text>
+    <text x="270" y="167" fill="#64748b">T1이 A를 잠금</text>
+
+    <circle cx="400" cy="118" r="13" fill="#059669"/><text x="400" y="123" fill="#fff" font-weight="700">2</text>
+    <text x="400" y="150" fill="#0f172a" font-weight="700">40.743초</text>
+    <text x="400" y="167" fill="#64748b">T2가 B를 잠금</text>
+
+    <circle cx="560" cy="118" r="13" fill="#f59e0b"/><text x="560" y="123" fill="#fff" font-weight="700">3</text>
+    <text x="560" y="150" fill="#0f172a" font-weight="700">42.758초</text>
+    <text x="560" y="167" fill="#64748b">서로 상대 것이 필요</text>
+
+    <circle cx="700" cy="118" r="13" fill="#dc2626"/><text x="700" y="123" fill="#fff" font-weight="700">4</text>
+    <text x="700" y="150" fill="#0f172a" font-weight="700">42.760초</text>
+    <text x="700" y="167" fill="#64748b">둘 다 BLOCKED</text>
+
+    <text x="1010" y="150" fill="#dc2626" font-weight="700">12분 29초</text>
+    <text x="1010" y="167" fill="#64748b">로그 0줄</text>
+
+    <text x="1110" y="150" fill="#0f172a" font-weight="700">16:26:11</text>
+    <text x="1110" y="167" fill="#64748b">Ctrl+C</text>
+  </g>
+  <text x="40" y="150" font-size="12.5" fill="#64748b">시각 (16:13:__)</text>
+
+  <!-- lane backgrounds -->
+  <rect x="30" y="182" width="1140" height="64" rx="10" fill="#f8fafc"/>
+  <rect x="30" y="254" width="1140" height="80" rx="10" fill="#f8fafc"/>
+  <rect x="30" y="342" width="1140" height="80" rx="10" fill="#f8fafc"/>
+
+  <!-- lane labels -->
+  <g font-size="14" font-weight="700" fill="#0f172a">
+    <text x="48" y="211">메인 스레드</text>
+    <text x="48" y="287">Worker-Thread-1</text>
+    <text x="48" y="375">Worker-Thread-2</text>
+  </g>
+  <g font-size="11.5" fill="#64748b">
+    <text x="48" y="229">일꾼이 끝나길 기다림</text>
+    <text x="48" y="305">(T1)</text>
+    <text x="48" y="393">(T2)</text>
+  </g>
+
+  <!-- main thread bar -->
+  <rect x="400" y="203" width="710" height="24" rx="12" fill="#cbd5e1"/>
+  <text x="414" y="220" font-size="12.5" fill="#334155">Waiting for worker threads to complete... (join)</text>
+
+  <!-- T1 bars -->
+  <rect x="270" y="266" width="840" height="24" rx="12" fill="#059669"/>
+  <text x="284" y="283" font-size="12.5" fill="#fff" font-weight="700">Shared_Memory_A 쥐고 있음 (LOCK ACQUIRED · Holding)</text>
+  <rect x="700" y="298" width="410" height="24" rx="12" fill="#fef2f2" stroke="#dc2626" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="714" y="315" font-size="12.5" fill="#b91c1c" font-weight="700">Socket_Pool_B 기다림 (BLOCKED)</text>
+  <circle cx="560" cy="310" r="6" fill="#f59e0b"/>
+  <text x="572" y="315" font-size="11.5" fill="#92400e">B가 필요</text>
+
+  <!-- T2 bars -->
+  <rect x="400" y="354" width="710" height="24" rx="12" fill="#2563eb"/>
+  <text x="414" y="371" font-size="12.5" fill="#fff" font-weight="700">Socket_Pool_B 쥐고 있음 (LOCK ACQUIRED · Holding)</text>
+  <rect x="700" y="386" width="410" height="24" rx="12" fill="#fef2f2" stroke="#dc2626" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="714" y="403" font-size="12.5" fill="#b91c1c" font-weight="700">Shared_Memory_A 기다림 (BLOCKED)</text>
+  <circle cx="560" cy="398" r="6" fill="#f59e0b"/>
+  <text x="572" y="403" font-size="11.5" fill="#92400e">A가 필요</text>
+
+  <!-- time break (bars are cut) -->
+  <rect x="990" y="186" width="40" height="234" fill="#ffffff"/>
+  <g stroke="#94a3b8" stroke-width="2" fill="none">
+    <path d="M990,186 l6,10 l-6,10 l6,10 l-6,10 l6,10 l-6,10 l6,10 l-6,10 l6,10 l-6,10 l6,10 l-6,10 l6,10 l-6,10 l6,10 l-6,10 l6,10 l-6,10 l6,10 l-6,10 l6,10 l-6,10 l6,10"/>
+    <path d="M1024,186 l6,10 l-6,10 l6,10 l-6,10 l6,10 l-6,10 l6,10 l-6,10 l6,10 l-6,10 l6,10 l-6,10 l6,10 l-6,10 l6,10 l-6,10 l6,10 l-6,10 l6,10 l-6,10 l6,10 l-6,10 l6,10"/>
+  </g>
+  <text x="1150" y="440" font-size="11.5" fill="#94a3b8" text-anchor="end">가로축은 실제 시간 비율이 아님 (④ 이후 12분을 줄여서 표시)</text>
+
+  <!-- ===== Bottom-left : wait-for cycle ===== -->
+  <rect x="30" y="462" width="560" height="310" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="50" y="492" font-size="16" font-weight="700" fill="#0f172a">④ 이후의 상태 = 원(순환)이 생겼다</text>
+  <g text-anchor="middle">
+    <rect x="235" y="510" width="140" height="48" rx="10" fill="#e2e8f0" stroke="#94a3b8"/>
+    <text x="305" y="539" font-size="14" font-weight="700" fill="#0f172a">Shared_Memory_A</text>
+    <rect x="235" y="700" width="140" height="48" rx="10" fill="#e2e8f0" stroke="#94a3b8"/>
+    <text x="305" y="729" font-size="14" font-weight="700" fill="#0f172a">Socket_Pool_B</text>
+    <rect x="62" y="606" width="130" height="50" rx="25" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+    <text x="127" y="629" font-size="14" font-weight="700" fill="#065f46">Thread-1</text>
+    <text x="127" y="646" font-size="11" fill="#b91c1c">BLOCKED</text>
+    <rect x="418" y="606" width="130" height="50" rx="25" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+    <text x="483" y="629" font-size="14" font-weight="700" fill="#1e40af">Thread-2</text>
+    <text x="483" y="646" font-size="11" fill="#b91c1c">BLOCKED</text>
+  </g>
+  <!-- holds -->
+  <path d="M235,534 C160,540 128,570 127,602" fill="none" stroke="#059669" stroke-width="3" marker-end="url(#g)"/>
+  <path d="M375,724 C450,718 482,690 483,660" fill="none" stroke="#059669" stroke-width="3" marker-end="url(#g)"/>
+  <!-- waits -->
+  <path d="M127,660 C128,692 160,720 231,724" fill="none" stroke="#dc2626" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#r)"/>
+  <path d="M483,602 C482,570 450,540 379,534" fill="none" stroke="#dc2626" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#r)"/>
+  <g font-size="12" font-weight="700">
+    <text x="44" y="566" fill="#059669">① 쥐고 있음</text>
+    <text x="496" y="700" fill="#059669">② 쥐고 있음</text>
+    <text x="60" y="712" fill="#dc2626">④ 기다림</text>
+    <text x="500" y="588" fill="#dc2626">④ 기다림</text>
+  </g>
+  <text x="305" y="626" font-size="13" text-anchor="middle" fill="#dc2626" font-weight="700">T1 → B → T2 → A → T1</text>
+  <text x="305" y="646" font-size="12" text-anchor="middle" fill="#64748b">끝이 없는 원</text>
+
+  <!-- ===== Bottom-right : 4 conditions with evidence ===== -->
+  <rect x="610" y="462" width="560" height="310" rx="14" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="630" y="492" font-size="16" font-weight="700" fill="#0f172a">데드락 4가지 조건이 로그에서 모두 확인됨</text>
+  <g font-size="13">
+    <rect x="630" y="508" width="520" height="58" rx="10" fill="#ffffff" stroke="#e2e8f0"/>
+    <text x="646" y="531" font-weight="700" fill="#5b21b6">① 상호 배제</text>
+    <text x="646" y="553" fill="#334155">자원마다 쥔 스레드는 하나 ("LOCK ACQUIRED ... Holding")</text>
+    <rect x="630" y="572" width="520" height="58" rx="10" fill="#ffffff" stroke="#e2e8f0"/>
+    <text x="646" y="595" font-weight="700" fill="#5b21b6">② 점유 대기</text>
+    <text x="646" y="617" fill="#334155">A를 쥔 채로 B를 요청 ("Need resource ... to finish job")</text>
+    <rect x="630" y="636" width="520" height="58" rx="10" fill="#ffffff" stroke="#e2e8f0"/>
+    <text x="646" y="659" font-weight="700" fill="#5b21b6">③ 비선점</text>
+    <text x="646" y="681" fill="#334155">12분 29초 동안 누구도 자원을 빼앗거나 놓지 않음</text>
+    <rect x="630" y="700" width="520" height="58" rx="10" fill="#fef2f2" stroke="#fca5a5"/>
+    <text x="646" y="723" font-weight="700" fill="#b91c1c">④ 순환 대기</text>
+    <text x="646" y="745" fill="#334155">T1은 B를, T2는 A를 기다림 → 서로가 서로를 기다리는 원</text>
+  </g>
+</svg>
