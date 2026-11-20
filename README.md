@@ -114,20 +114,12 @@
 
 ## 📁 폴더 구조
 
-```
-codyssey_B4-2/
-├── README.md          ← 지금 보는 문서 (결과 · 그래프 · 개념)
-├── 수행과정.md         ← 무엇을 어떤 순서로 했나 (명령 + 📸)
-├── evaluation.md      ← 평가표 항목 1~4 답변
-├── reports/
-│   ├── 01-oom.md      ← 🔴 OOM 리포트
-│   ├── 02-cpu.md      ← 🟠 CPU Spike 리포트
-│   └── 03-deadlock.md ← 🟣 Deadlock 리포트
-├── bin/
-│   └── monitor.sh     ← 관제 스크립트
-├── logs/              ← 실험 4번의 로그 원본 8개
-└── images/
-    ├── 00~05-*.svg    ← 개념 그림
-    ├── chart_*.png    ← 실측 그래프
-    └── evidence/      ← VM 스크린샷 16장
-```
+| 위치 | 내용 |
+|:--|:--|
+| `README.md` | 지금 보는 문서 - 결과 · 그래프 · 개념 |
+| [`수행과정.md`](수행과정.md) | 무엇을 어떤 순서로 했나 - 명령 + 📸 |
+| [`evaluation.md`](evaluation.md) | 평가표 항목 1~4 답변 |
+| [`reports/`](reports/) | 🔴 `01-oom.md` · 🟠 `02-cpu.md` · 🟣 `03-deadlock.md` |
+| [`bin/monitor.sh`](bin/monitor.sh) | 관제 스크립트 |
+| [`logs/`](logs/) | 실험 4번의 로그 원본 8개 |
+| [`images/`](images/) | 개념 그림(`00`~`05`) · 실측 그래프(`chart_*`) · [VM 스크린샷 16장](images/evidence/) |
