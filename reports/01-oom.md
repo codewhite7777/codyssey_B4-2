@@ -1,5 +1,10 @@
 # [Bug] OOM - 메모리가 3초마다 25MB씩 쌓이다가 17초 만에 MemoryGuard가 프로세스를 강제 종료
 
+> **요약**
+> - 메모리가 3초마다 25MB씩 늘고 줄지 않았다 (메모리 누수).
+> - 한도 128MB를 넘자 앱의 MemoryGuard가 **자기 자신을 SIGKILL로 강제 종료**했다 (17초, exit=137).
+> - 한도를 512MB로 올리자 앱이 525MB마다 스스로 정리하며 **8분 이상 살아남았다.** 단, 누수 자체는 그대로다.
+
 | 항목 | 내용 |
 |---|---|
 | 장애 유형 | Memory Leak → OOM (메모리 한도 초과로 강제 종료) |
@@ -77,9 +82,13 @@ exit=137
 
 ### ③ 스크린샷
 
-| 앱 화면 (탭 1) | monitor.sh 화면 (탭 2) |
-|---|---|
-| ![앱 화면](../images/evidence/1-1_oom_app.png) | ![monitor](../images/evidence/1-2_oom_monitor.png) |
+**앱 화면** - `Memory limit exceeded` → `SELF-TERMINATED` → `Killed` → `exit=137`
+
+<img src="../images/evidence/1-1_oom_app.png" width="720">
+
+**monitor.sh 화면** - RSS 17 → 143MB → `PROCESS NOT FOUND`
+
+<img src="../images/evidence/1-2_oom_monitor.png" width="720">
 
 ## 3. Root Cause Analysis (원인 분석)
 
@@ -133,9 +142,13 @@ After 실행의 정리 순간 (앱 로그와 monitor.sh가 같은 순간에 맞�
 [2026-11-20 16:30:22] PROCESS:agent-leak-app PID:7633 ... MEM:0.4%  RSS:17MB  ...
 ```
 
-| After 앱 화면 | After monitor.sh |
-|---|---|
-| ![After 앱](../images/evidence/4-1_healthy_app.png) | ![After monitor](../images/evidence/4-2_healthy_monitor.png) |
+**After 앱 화면** - 525MB → `Starting cleanup...` → `MEMORY RECOVERED`
+
+<img src="../images/evidence/4-1_healthy_app.png" width="720">
+
+**After monitor.sh** - 정리 순간 RSS 517MB → 67MB
+
+<img src="../images/evidence/4-2_healthy_monitor.png" width="720">
 
 ### 한계: 이것은 임시 조치입니다
 

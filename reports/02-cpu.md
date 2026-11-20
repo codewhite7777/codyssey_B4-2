@@ -1,5 +1,10 @@
 # [Bug] CPU Spike - 앱이 보고한 CPU 부하가 50%를 넘는 순간 Watchdog이 SIGTERM으로 종료
 
+> **요약**
+> - 앱의 `CpuWorker`가 부하를 3초마다 올렸고, **50%를 넘는 순간 Watchdog이 SIGTERM으로 종료**했다 (46초, exit=143).
+> - 같은 시간 OS가 잰 실제 CPU는 0~10%였다. 종료는 **앱이 보고한 내부 수치** 기준이다.
+> - 상한을 40%로 낮추자 부하가 40%에서 멈췄다 내려가기를 반복하며 **8분 이상 살아남았다.**
+
 | 항목 | 내용 |
 |---|---|
 | 장애 유형 | CPU 과점유 → Watchdog 보호 종료 |
@@ -74,13 +79,17 @@ exit=143
 
 ### ③ 스크린샷
 
-| 앱 화면 (탭 1) | monitor.sh 화면 (탭 2) |
-|---|---|
-| ![앱 화면](../images/evidence/2-1_cpu_app.png) | ![monitor](../images/evidence/2-2_cpu_monitor.png) |
+**앱 화면** - Current Load 5% → 51.22% → `WATCHDOG ... SIGTERM` → `exit=143`
+
+<img src="../images/evidence/2-1_cpu_app.png" width="720">
+
+**monitor.sh 화면** - 같은 시간 실제 CPU 0~10%
+
+<img src="../images/evidence/2-2_cpu_monitor.png" width="720">
 
 **`top`으로 직접 본 실제 CPU** (리허설 실행, `CPU_MAX_OCCUPY=40`, PID 1220, 15:40:57)
 
-![top 실제 CPU](../images/evidence/2-3_cpu_top_actual.png)
+<img src="../images/evidence/2-3_cpu_top_actual.png" width="720">
 
 - 같은 순간 앱 로그는 `15:40:57,774 [CpuWorker] Current Load: 25.34%`였지만, `top`의 자식 프로세스(NI 10) `%CPU`는 **1.3**, 서버 전체는 `99.5 id`(99.5% 놀고 있음)였습니다.
 

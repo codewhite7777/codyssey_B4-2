@@ -1,5 +1,10 @@
 # [Bug] Deadlock - 멀티스레드 모드에서 두 스레드가 서로의 자원을 기다리며 12분 넘게 무응답
 
+> **요약**
+> - Thread-1은 A를 쥐고 B를, Thread-2는 B를 쥐고 A를 기다려 **서로가 서로를 기다리는 원**이 생겼다.
+> - 프로세스는 살아 있었지만 CPU 0% · 메모리 고정 · **로그 0줄로 12분 29초** 동안 멈춰 있었다.
+> - 멀티스레드를 끄자 기다릴 상대가 없어져 **데드락이 사라졌다.**
+
 | 항목 | 내용 |
 |---|---|
 | 장애 유형 | 교착상태 (Deadlock) → 프로세스는 살아 있으나 무응답 |
@@ -94,13 +99,25 @@ Threads:   3 total,   0 running,   3 sleeping
 
 ### ⑤ 스크린샷
 
-| 앱 화면 (마지막 BLOCKED 두 줄) | monitor.sh (LOG_AGE 증가) |
-|---|---|
-| ![앱](../images/evidence/3-1_deadlock_app.png) | ![monitor](../images/evidence/3-2_deadlock_monitor.png) |
+**앱 화면** - 마지막 로그 `WAITING ... (Status: BLOCKED)` 두 줄
 
-| `ps -ef` | `ps -L` | `top -H` |
-|---|---|---|
-| ![ps -ef](../images/evidence/3-3_deadlock_ps_ef.png) | ![ps -L](../images/evidence/3-4_deadlock_ps_L.png) | ![top -H](../images/evidence/3-5_deadlock_top_H.png) |
+<img src="../images/evidence/3-1_deadlock_app.png" width="720">
+
+**monitor.sh** - CPU 0% · RSS 17MB 고정, LOG_AGE만 증가
+
+<img src="../images/evidence/3-2_deadlock_monitor.png" width="720">
+
+**`ps -ef`** - PID 2915, 2916 살아 있음
+
+<img src="../images/evidence/3-3_deadlock_ps_ef.png" width="720">
+
+**`ps -L`** - 스레드 3개 모두 `SNl+`, `%CPU 0.0`
+
+<img src="../images/evidence/3-4_deadlock_ps_L.png" width="720">
+
+**`top -H`** - 스레드 3개 모두 `S`, `TIME+ 0:00.00`
+
+<img src="../images/evidence/3-5_deadlock_top_H.png" width="720">
 
 ## 3. Root Cause Analysis (원인 분석)
 
@@ -145,7 +162,7 @@ exit=0
 
 - 파이썬은 끝나기 전에 일꾼 스레드가 끝나기를 기다리는데(`_shutdown`), 두 스레드는 **서로를 기다리느라 영원히 끝나지 않으므로** 그 기다림이 강제로 끊긴 것입니다. 데드락 상태를 한 번 더 보여 주는 기록입니다.
 
-![Ctrl+C 화면](../images/evidence/3-6_deadlock_ctrl_c.png)
+<img src="../images/evidence/3-6_deadlock_ctrl_c.png" width="720">
 
 ## 4. Workaround & Verification (조치 및 검증)
 
