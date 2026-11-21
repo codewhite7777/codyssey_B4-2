@@ -237,7 +237,7 @@
 
 <img src="screenshots/3_deadlock/3-3_deadlock_ps_ef.png" width="900">
 
-**3-4  스레드별 상태 (ps -L)** · 2026-11-20 16:23 · 경과 9분 23초
+**3-4  스레드별 상태 (ps -L) · 누가 메인이고 누가 일꾼인가** · 2026-11-20 16:23 · 경과 9분 23초 · LWP = OS가 스레드마다 붙인 번호
 
 <img src="screenshots/3_deadlock/3-4_deadlock_ps_L.png" width="900">
 
