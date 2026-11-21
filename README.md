@@ -12,11 +12,11 @@
 
 | 순서 | 문서 | 내용 | 걸리는 시간 |
 |:--:|:--|:--|:--:|
-| 1 | **이 README** | 과제 소개 → 지급 프로그램 → 분석 방법 → 결과 → 그래프 → 개념 | 5분 |
+| 1 | **이 README** | 과제 소개 → 지급 프로그램 → 분석 방법 → 결과 → 스크린샷 → 그래프 → 개념 | 5분 |
 | 2 | [수행과정.md](수행과정.md) | 제공 앱 분석 → VM 준비 → monitor.sh → 실험 4번 (명령 + 📸) | 10분 |
 | 3 | [reports/](reports/) | 장애별 리포트 3건 | 각 5분 |
 | 4 | [evaluation.md](evaluation.md) | 평가표 질문 원문 순서대로 답변 | 평가 때 |
-| + | [screenshots/](screenshots/) | 📸 증거 사진 16장 (사진마다 근거·의미 설명) | 필요할 때 |
+| + | [📸 증거 스크린샷](#-증거-스크린샷) (이 README 안) | 증거 사진 16장, 사진마다 근거·의미 설명 | 필요할 때 |
 
 <br>
 
@@ -67,7 +67,7 @@
 | 5/6 | 로그 폴더 | 있어야 하고 쓰기 권한 필요 |
 | 6/6 | 실험용 환경변수 3개 | 아래 표의 범위 안 |
 
-하나라도 틀리면 `System Boot Failed`로 꺼지고, 모두 맞으면 `Agent READY`가 나옵니다. → [📸 0-1](screenshots/0_setup/README.md#0-1)
+하나라도 틀리면 `System Boot Failed`로 꺼지고, 모두 맞으면 `Agent READY`가 나옵니다. → [📸 0-1](#-0-실행-환경--앱-구조)
 
 ### ② 켜진 뒤: 환경변수 3개로 장애를 고른다
 
@@ -83,7 +83,7 @@
 
 | 관찰 | 분석에 준 영향 |
 |:--|:--|
-| 실행하면 **프로세스가 2개** 뜬다 (부모 = 껍데기, 자식 = 실제 일꾼) | monitor.sh는 **자식**을 재야 함 → [📸 0-2, 0-3](screenshots/0_setup/) |
+| 실행하면 **프로세스가 2개** 뜬다 (부모 = 껍데기, 자식 = 실제 일꾼) | monitor.sh는 **자식**을 재야 함 → [📸 0-2, 0-3](#-0-실행-환경--앱-구조) |
 | 앱이 스스로 우선순위를 낮춘다 (`nice=10`) | 부하를 줘도 다른 프로세스를 덜 방해 |
 | 로그를 `~/agent-app/logs/agent_app.log`에 쓴다 | 단, 마지막 경고(`SELF-TERMINATED`, `WATCHDOG`)는 **화면에만** 나옴 → 화면 캡처 필요 |
 
@@ -141,6 +141,132 @@
 | **After** | ✅ 8분 이상 생존 | ✅ 8분 이상 생존 | ✅ 로그가 계속 쌓임 |
 
 > 표의 장애 이름을 누르면 리포트(현상 → 증거 → 원인 → 조치)로 이동합니다.
+
+<br>
+
+## 📸 증거 스크린샷
+
+모두 **내 VM에서 직접 찍은 화면**입니다. 사진마다 **맥 터미널 창 틀**(제목 = 실제로 친 명령), **봐야 할 줄 강조**(색 상자 + 번호), **근거와 의미 설명**을 붙였습니다.
+손대지 않은 원본은 `screenshots/<실험>/original/`에 그대로 있습니다.
+
+> ▶ 제목을 누르면 펼쳐집니다.
+
+| 실험 | 사진 | 무엇을 보여 주나 |
+|:--|:--|:--|
+| 0. 실행 환경 · 앱 구조 | 0-1 · 0-2 · 0-3 | 부팅 검사 6단계 OK, 프로세스 2개(부모·자식) 확인 |
+| 1. 🔴 OOM 실험 | 1-1 · 1-2 | MEMORY_LIMIT=128 → 메모리 누수 → MemoryGuard 강제 종료 |
+| 2. 🟠 CPU Spike 실험 | 2-1 · 2-2 · 2-3 | CPU_MAX_OCCUPY=100 → Watchdog 종료, 실제 CPU와 비교 |
+| 3. 🟣 Deadlock 실험 | 3-1 · 3-2 · 3-3 · 3-4 · 3-5 · 3-6 | MULTI_THREAD_ENABLE=true → 살아 있지만 멈춘 상태 진단 |
+| 4. ✅ 정상 실행 (세 실험의 After) | 4-1 · 4-2 | 512 / 40 / false로 8분 동안 정상 동작 |
+
+### 📸 0. 실행 환경 · 앱 구조
+
+<details>
+<summary><b>부팅 검사 6단계 OK, 프로세스 2개(부모·자식) 확인</b> · 3장 펼치기</summary>
+
+<br>
+
+**0-1  첫 실행 · 부팅 검사 6단계** · 2026-11-20 07:24 · 첫 실행 (이때 기본값은 CPU_MAX_OCCUPY=100)
+
+<img src="screenshots/0_setup/0-1_boot_ok.png" width="900">
+
+**0-2  프로세스는 2개 (부모 · 자식)** · 2026-11-20 14:38 · 리허설 실행 중 ps 확인
+
+<img src="screenshots/0_setup/0-2_parent_child_ps.png" width="900">
+
+**0-3  일하는 쪽은 자식** · 2026-11-20 14:39:24 · 다시 실행해서 PID가 바뀜 (부모 1134 · 자식 1135)
+
+<img src="screenshots/0_setup/0-3_parent_child_top.png" width="900">
+
+</details>
+
+### 📸 1. 🔴 OOM 실험
+
+<details>
+<summary><b>MEMORY_LIMIT=128 → 메모리 누수 → MemoryGuard 강제 종료</b> · 2장 펼치기</summary>
+
+<br>
+
+**1-1  OOM 실험 · 앱 화면** · 2026-11-20 16:06 · PID 2363 · MEMORY_LIMIT=128 로 실행
+
+<img src="screenshots/1_oom/1-1_oom_app.png" width="900">
+
+**1-2  OOM 실험 · monitor.sh** · 2026-11-20 16:06 · 1-1과 같은 실행을 옆 탭에서 기록
+
+<img src="screenshots/1_oom/1-2_oom_monitor.png" width="900">
+
+</details>
+
+### 📸 2. 🟠 CPU Spike 실험
+
+<details>
+<summary><b>CPU_MAX_OCCUPY=100 → Watchdog 종료, 실제 CPU와 비교</b> · 3장 펼치기</summary>
+
+<br>
+
+**2-1  CPU 실험 · 앱 화면** · 2026-11-20 16:09 · PID 2606 · CPU_MAX_OCCUPY=100 으로 실행
+
+<img src="screenshots/2_cpu/2-1_cpu_app.png" width="900">
+
+**2-2  CPU 실험 · monitor.sh** · 2026-11-20 16:09 · 2-1과 같은 실행을 옆 탭에서 기록
+
+<img src="screenshots/2_cpu/2-2_cpu_monitor.png" width="900">
+
+**2-3  top으로 직접 본 실제 CPU** · 2026-11-20 15:40:57 · 리허설 실행 (CPU_MAX_OCCUPY=40, PID 1220)
+
+<img src="screenshots/2_cpu/2-3_cpu_top_actual.png" width="900">
+
+</details>
+
+### 📸 3. 🟣 Deadlock 실험
+
+<details>
+<summary><b>MULTI_THREAD_ENABLE=true → 살아 있지만 멈춘 상태 진단</b> · 6장 펼치기</summary>
+
+<br>
+
+**3-1  Deadlock 실험 · 앱 화면** · 2026-11-20 16:13 · PID 2916 · MULTI_THREAD_ENABLE=true 로 실행
+
+<img src="screenshots/3_deadlock/3-1_deadlock_app.png" width="900">
+
+**3-2  Deadlock 실험 · monitor.sh** · 2026-11-20 16:13 ~ · 3-1과 같은 실행을 옆 탭에서 기록
+
+<img src="screenshots/3_deadlock/3-2_deadlock_monitor.png" width="900">
+
+**3-3  살아 있다 (PID 존재)** · 2026-11-20 16:23 · 데드락 약 9분 뒤
+
+<img src="screenshots/3_deadlock/3-3_deadlock_ps_ef.png" width="900">
+
+**3-4  스레드별 상태 (ps -L)** · 2026-11-20 16:23 · 경과 9분 23초
+
+<img src="screenshots/3_deadlock/3-4_deadlock_ps_L.png" width="900">
+
+**3-5  스레드별 CPU (top -H)** · 2026-11-20 16:23:11
+
+<img src="screenshots/3_deadlock/3-5_deadlock_top_H.png" width="900">
+
+**3-6  Ctrl+C로 종료** · 2026-11-20 16:26:11 · 마지막 로그(16:13:42)부터 12분 29초 뒤
+
+<img src="screenshots/3_deadlock/3-6_deadlock_ctrl_c.png" width="900">
+
+</details>
+
+### 📸 4. ✅ 정상 실행 (세 실험의 After)
+
+<details>
+<summary><b>512 / 40 / false로 8분 동안 정상 동작</b> · 2장 펼치기</summary>
+
+<br>
+
+**4-1  정상 실행 · 앱 화면 (세 실험의 After)** · 2026-11-20 16:29 ~ 16:37 · PID 7633 · 512 / 40 / false (값을 바꾸지 않음)
+
+<img src="screenshots/4_healthy/4-1_healthy_app.png" width="900">
+
+**4-2  정상 실행 · monitor.sh** · 2026-11-20 16:36 ~ 16:37 · 4-1과 같은 실행의 마지막 부분
+
+<img src="screenshots/4_healthy/4-2_healthy_monitor.png" width="900">
+
+</details>
 
 <br>
 
@@ -212,5 +338,5 @@
 | [`reports/`](reports/) | 🔴 `01-oom.md` · 🟠 `02-cpu.md` · 🟣 `03-deadlock.md` |
 | [`bin/monitor.sh`](bin/monitor.sh) | 관제 스크립트 |
 | [`logs/`](logs/) | 실험 4번의 로그 원본 8개 |
-| [`screenshots/`](screenshots/) | 📸 VM 스크린샷 16장 - 실험별 폴더, 터미널 창 틀 + 강조 + 근거·의미 설명 (원본은 `original/`) |
+| `screenshots/` | 스크린샷 이미지 파일 16장 (README의 [📸 증거 스크린샷](#-증거-스크린샷)에서 보여 줌) · 원본은 `original/` |
 | [`images/`](images/) | 개념 그림(`00`~`06`) · 실측 그래프(`chart_*`) |
