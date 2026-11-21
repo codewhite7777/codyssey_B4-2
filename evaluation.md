@@ -84,7 +84,7 @@
 
 ### 1-8. [Evidence] 리포트에 PID, 로그 타임스탬프, 핵심 로그 메시지가 포함된 증거(스크린샷 또는 로그 발췌)가 첨부되어 있는가?
 
-✅ **포함** - 스크린샷 16장([images/evidence/](images/evidence/)) + 로그 원본 8개([logs/](logs/))
+✅ **포함** - 스크린샷 16장([screenshots/](screenshots/)) + 로그 원본 8개([logs/](logs/))
 
 | 리포트 | PID | 핵심 로그 (타임스탬프) | 스크린샷 |
 |---|---|---|---|
@@ -112,7 +112,7 @@
 
 | `ps`: 부모·자식 2개 | `top`: 부모 RES 1MB, 자식 RES 18MB + NI 10 |
 |---|---|
-| ![ps](images/evidence/0-2_parent_child_ps.png) | ![top](images/evidence/0-3_parent_child_top.png) |
+| ![ps](screenshots/0_setup/0-2_parent_child_ps.png) | ![top](screenshots/0_setup/0-3_parent_child_top.png) |
 
 ### 2-2. 프로세스의 CPU 사용률을 확인하기 위해 선택한 도구와 적용한 옵션의 의미를 구분하여 서술할 수 있는가?
 

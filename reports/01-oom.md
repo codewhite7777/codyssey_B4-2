@@ -84,11 +84,11 @@ exit=137
 
 **앱 화면** - `Memory limit exceeded` → `SELF-TERMINATED` → `Killed` → `exit=137`
 
-<img src="../images/evidence/1-1_oom_app.png" width="720">
+<img src="../screenshots/1_oom/1-1_oom_app.png" width="720">
 
 **monitor.sh 화면** - RSS 17 → 143MB → `PROCESS NOT FOUND`
 
-<img src="../images/evidence/1-2_oom_monitor.png" width="720">
+<img src="../screenshots/1_oom/1-2_oom_monitor.png" width="720">
 
 ## 3. Root Cause Analysis (원인 분석)
 
@@ -144,11 +144,11 @@ After 실행의 정리 순간 (앱 로그와 monitor.sh가 같은 순간에 맞�
 
 **After 앱 화면** - 525MB → `Starting cleanup...` → `MEMORY RECOVERED`
 
-<img src="../images/evidence/4-1_healthy_app.png" width="720">
+<img src="../screenshots/4_healthy/4-1_healthy_app.png" width="720">
 
 **After monitor.sh** - 정리 순간 RSS 517MB → 67MB
 
-<img src="../images/evidence/4-2_healthy_monitor.png" width="720">
+<img src="../screenshots/4_healthy/4-2_healthy_monitor.png" width="720">
 
 ### 한계: 이것은 임시 조치입니다
 

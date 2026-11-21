@@ -79,6 +79,7 @@
 | 2 | [수행과정.md](수행과정.md) | 제공 앱 분석 → VM 준비 → monitor.sh → 실험 4번 (명령 + 📸) | 10분 |
 | 3 | [reports/](reports/) | 장애별 리포트 3건 | 각 5분 |
 | 4 | [evaluation.md](evaluation.md) | 평가표 질문 원문 순서대로 답변 | 평가 때 |
+| + | [screenshots/](screenshots/) | 📸 증거 사진 16장 (사진마다 근거·의미 설명) | 필요할 때 |
 
 <br>
 
@@ -163,4 +164,5 @@
 | [`reports/`](reports/) | 🔴 `01-oom.md` · 🟠 `02-cpu.md` · 🟣 `03-deadlock.md` |
 | [`bin/monitor.sh`](bin/monitor.sh) | 관제 스크립트 |
 | [`logs/`](logs/) | 실험 4번의 로그 원본 8개 |
-| [`images/`](images/) | 개념 그림(`00`~`06`) · 실측 그래프(`chart_*`) · [VM 스크린샷 16장](images/evidence/) |
+| [`screenshots/`](screenshots/) | 📸 VM 스크린샷 16장 - 실험별 폴더, 터미널 창 틀 + 강조 + 근거·의미 설명 (원본은 `original/`) |
+| [`images/`](images/) | 개념 그림(`00`~`06`) · 실측 그래프(`chart_*`) |

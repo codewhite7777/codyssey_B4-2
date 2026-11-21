@@ -81,15 +81,15 @@ exit=143
 
 **앱 화면** - Current Load 5% → 51.22% → `WATCHDOG ... SIGTERM` → `exit=143`
 
-<img src="../images/evidence/2-1_cpu_app.png" width="720">
+<img src="../screenshots/2_cpu/2-1_cpu_app.png" width="720">
 
 **monitor.sh 화면** - 같은 시간 실제 CPU 0~10%
 
-<img src="../images/evidence/2-2_cpu_monitor.png" width="720">
+<img src="../screenshots/2_cpu/2-2_cpu_monitor.png" width="720">
 
 **`top`으로 직접 본 실제 CPU** (리허설 실행, `CPU_MAX_OCCUPY=40`, PID 1220, 15:40:57)
 
-<img src="../images/evidence/2-3_cpu_top_actual.png" width="720">
+<img src="../screenshots/2_cpu/2-3_cpu_top_actual.png" width="720">
 
 - 같은 순간 앱 로그는 `15:40:57,774 [CpuWorker] Current Load: 25.34%`였지만, `top`의 자식 프로세스(NI 10) `%CPU`는 **1.3**, 서버 전체는 `99.5 id`(99.5% 놀고 있음)였습니다.
 
