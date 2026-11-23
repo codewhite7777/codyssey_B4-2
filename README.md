@@ -516,7 +516,7 @@ cd ~/agent-app; MEMORY_LIMIT=128 ./agent-leak-app-x86; echo "exit=$?"
 
 ##### 2. Evidence & Logs (증거 자료)
 
-###### Q1. 무엇이 변했나? - monitor.sh → 실제 메모리(RSS)만 일직선으로 증가
+🔎 **Q1. 무엇이 변했나? - monitor.sh → 실제 메모리(RSS)만 일직선으로 증가**
 
 <img src="screenshots/1_oom/1-2_oom_monitor.png" width="720">
 
@@ -545,7 +545,7 @@ cd ~/agent-app; MEMORY_LIMIT=128 ./agent-leak-app-x86; echo "exit=$?"
 
 </details>
 
-###### Q2. 누가 껐나? - 앱 화면 → MemoryGuard가 SIGKILL로 종료
+🔎 **Q2. 누가 껐나? - 앱 화면 → MemoryGuard가 SIGKILL로 종료**
 
 <img src="screenshots/1_oom/1-1_oom_app.png" width="720">
 
@@ -689,7 +689,7 @@ cd ~/agent-app; CPU_MAX_OCCUPY=100 ./agent-leak-app-x86; echo "exit=$?"
 
 ##### 2. Evidence & Logs (증거 자료)
 
-###### Q1. 왜 꺼졌나? - 앱 화면 → Watchdog이 SIGTERM으로 종료
+🔎 **Q1. 왜 꺼졌나? - 앱 화면 → Watchdog이 SIGTERM으로 종료**
 
 <img src="screenshots/2_cpu/2-1_cpu_app.png" width="720">
 
@@ -721,7 +721,7 @@ exit=143
 
 </details>
 
-###### Q2. 실제 CPU도 높았나? - monitor.sh · `top` → 아님 (0~10%)
+🔎 **Q2. 실제 CPU도 높았나? - monitor.sh · `top` → 아님 (0~10%)**
 
 <img src="screenshots/2_cpu/2-2_cpu_monitor.png" width="720">
 
@@ -846,14 +846,14 @@ cd ~/agent-app; MULTI_THREAD_ENABLE=true ./agent-leak-app-x86; echo "exit=$?"
 > 진단은 **질문 4개를 순서대로** 했습니다. 질문 하나에 도구 하나를 쓰고, 그 답이 다음 질문을 정합니다.
 > **살아 있나? → 일하고 있나? → 언제부터 멈췄나? → 무엇을 기다리나?** ([2-3 진단 순서](#2-3-살아-있지만-멈춘-상태의-진단-순서))
 
-###### Q1. 살아 있나? - `ps -ef` → 살아 있음
+🔎 **Q1. 살아 있나? - `ps -ef` → 살아 있음**
 
 <img src="screenshots/3_deadlock/3-3_deadlock_ps_ef.png" width="720">
 
 - PID 2915(부모)와 2916(자식)이 **둘 다 있습니다.** OOM·CPU처럼 꺼진 게 아닙니다.
 - ➡ 살아 있다면, **일은 하고 있을까?**
 
-###### Q2. 일하고 있나? - `ps -L` · `top -H` → 아무것도 안 함
+🔎 **Q2. 일하고 있나? - `ps -L` · `top -H` → 아무것도 안 함**
 
 <img src="screenshots/3_deadlock/3-4_deadlock_ps_L.png" width="720">
 
@@ -886,7 +886,7 @@ Threads:   3 total,   0 running,   3 sleeping
 
 </details>
 
-###### Q3. 언제부터 멈췄나? - monitor.sh `LOG_AGE` → 16:13:42 이후 계속 멈춤
+🔎 **Q3. 언제부터 멈췄나? - monitor.sh `LOG_AGE` → 16:13:42 이후 계속 멈춤**
 
 <img src="screenshots/3_deadlock/3-2_deadlock_monitor.png" width="720">
 
@@ -909,7 +909,7 @@ Threads:   3 total,   0 running,   3 sleeping
 
 </details>
 
-###### Q4. 무엇을 기다리나? - 앱 로그 마지막 줄 → 서로를 기다림
+🔎 **Q4. 무엇을 기다리나? - 앱 로그 마지막 줄 → 서로를 기다림**
 
 <img src="screenshots/3_deadlock/3-1_deadlock_app.png" width="720">
 
