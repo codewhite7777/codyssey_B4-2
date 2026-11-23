@@ -154,7 +154,7 @@
 
 **실험 방법** - 정상값(`512 / 40 / false`)에서 **값 하나만** 바꿔 실행하고, 다른 탭에서 monitor.sh로 1초마다 기록했습니다. 고친 값(After)은 정상 실행 한 번(PID 7633, 8분)으로 세 실험을 함께 비교합니다.
 
-각 실험은 **① 무엇을 바꿨나 → ② 앱 로그 → ③ 그래프(왼쪽 Before / 오른쪽 After) → ④ 결론** 순서입니다.
+각 실험은 **① 무엇을 바꿨나 → ② 앱 화면(스크린샷) → ③ 그래프(왼쪽 Before / 오른쪽 After) → ④ 결론** 순서입니다.
 
 ### 🔴 실험 1. OOM - 메모리가 한도를 넘는가
 
@@ -162,12 +162,9 @@
 |:--|:--|:--|:--|
 | `MEMORY_LIMIT` 512 → **128** | `MEMORY_LIMIT=128 ./agent-leak-app-x86` | 2363 · 16:06:21 ~ 16:06:38 | **17초 만에 강제 종료** (exit=137) |
 
-```
-16:06:38 [INFO]     [MemoryWorker] Current Heap: 150MB
-16:06:38 [CRITICAL] [MemoryGuard] Memory limit exceeded (150MB >= 128MB)
-16:06:38 [CRITICAL] [MemoryGuard] Self-terminating process 2363 to prevent system instability.
-Killed / exit=137   ← 128 + 9 = SIGKILL
-```
+**📸 1-1 앱 화면 - 메모리가 25MB씩 늘다가 150MB에서 MemoryGuard가 강제 종료 (exit=137)**
+
+<img src="screenshots/1_oom/1-1_oom_app.png" width="820">
 
 ![OOM Before & After](images/chart_oom.png)
 
@@ -175,7 +172,18 @@ Killed / exit=137   ← 128 + 9 = SIGKILL
 - **After (512MB)** - 똑같이 오르지만 한도 512MB를 넘는 순간(25MB 단위라 **525MB**) 앱이 스스로 정리하고 다시 오름(톱니 7번) → **8분 이상 생존**
 - **결론** - 오르는 속도는 둘이 같습니다. **한도만 높여 시간을 번 임시 조치**이고, 근본 해결은 [4-4 코드 개선](#4-4-코드-레벨-개선)입니다
 
-📸 [스크린샷 1-1 · 1-2](#-1--oom-실험) · 📄 [리포트](#bug-oom---메모리가-3초마다-25mb씩-쌓이다가-17초-만에-memoryguard가-프로세스를-강제-종료) · ✅ 평가표 [1-1](#1-1-oom-메모리-선형-증가--강제-종료-패턴) · [1-2](#1-2-oom-memory_limit-조정-before--after)
+<details>
+<summary><b>📸 같은 실험의 관제 기록</b> · 1장 펼치기</summary>
+
+<br>
+
+**1-2 monitor.sh - 같은 실행의 RSS가 일직선으로 늘다가 PROCESS NOT FOUND**
+
+<img src="screenshots/1_oom/1-2_oom_monitor.png" width="820">
+
+</details>
+
+📸 [스크린샷 전체 설명 1-1 · 1-2](#-1--oom-실험) · 📄 [리포트](#bug-oom---메모리가-3초마다-25mb씩-쌓이다가-17초-만에-memoryguard가-프로세스를-강제-종료) · ✅ 평가표 [1-1](#1-1-oom-메모리-선형-증가--강제-종료-패턴) · [1-2](#1-2-oom-memory_limit-조정-before--after)
 
 ### 🟠 실험 2. CPU Spike - 부하가 종료 기준을 넘는가
 
@@ -183,13 +191,9 @@ Killed / exit=137   ← 128 + 9 = SIGKILL
 |:--|:--|:--|:--|
 | `CPU_MAX_OCCUPY` 40 → **100** | `CPU_MAX_OCCUPY=100 ./agent-leak-app-x86` | 2606 · 16:09:03 ~ 16:09:48 | **46초 만에 종료** (exit=143) |
 
-```
-16:09:33 [INFO]     [CpuWorker] Current Load: 40.87%
-16:09:48 [INFO]     [CpuWorker] Current Load: 51.22%
-16:09:48 [CRITICAL] [CpuWorker] CPU Threshold Violated! (51.22%).
->>> [SYSTEM] WATCHDOG: INITIATING EMERGENCY ABORT (SIGTERM) <<<
-Terminated / exit=143   ← 128 + 15 = SIGTERM
-```
+**📸 2-1 앱 화면 - 부하가 3초마다 오르다 51.22%에서 Watchdog이 SIGTERM으로 종료 (exit=143)**
+
+<img src="screenshots/2_cpu/2-1_cpu_app.png" width="820">
 
 ![CPU Before & After](images/chart_cpu.png)
 
@@ -197,7 +201,22 @@ Terminated / exit=143   ← 128 + 15 = SIGTERM
 - **After (40%)** - 40%에 닿으면 식혔다가 다시 오름 → 점선에 한 번도 닿지 않고 **8분 이상 생존**
 - **결론** - 주황선(OS가 잰 실제 CPU)은 내내 0~10%입니다. 종료를 결정한 것은 **앱이 스스로 보고한 수치**이고, 부하 상한(100)이 종료 기준(50)보다 높게 설정된 것이 원인입니다
 
-📸 [스크린샷 2-1 ~ 2-3](#-2--cpu-spike-실험) · 📄 [리포트](#bug-cpu-spike---앱이-보고한-cpu-부하가-50를-넘는-순간-watchdog이-sigterm으로-종료) · ✅ 평가표 [1-3](#1-3-cpu-임계치-초과--종료-패턴) · [1-4](#1-4-cpu-cpu_max_occupy-조정-before--after)
+<details>
+<summary><b>📸 같은 실험의 관제 기록 · 실제 CPU</b> · 2장 펼치기</summary>
+
+<br>
+
+**2-2 monitor.sh - 같은 실행의 실제 CPU는 0~10%**
+
+<img src="screenshots/2_cpu/2-2_cpu_monitor.png" width="820">
+
+**2-3 top - 실제 CPU를 직접 확인 (리허설 실행)**
+
+<img src="screenshots/2_cpu/2-3_cpu_top_actual.png" width="820">
+
+</details>
+
+📸 [스크린샷 전체 설명 2-1 ~ 2-3](#-2--cpu-spike-실험) · 📄 [리포트](#bug-cpu-spike---앱이-보고한-cpu-부하가-50를-넘는-순간-watchdog이-sigterm으로-종료) · ✅ 평가표 [1-3](#1-3-cpu-임계치-초과--종료-패턴) · [1-4](#1-4-cpu-cpu_max_occupy-조정-before--after)
 
 ### 🟣 실험 3. Deadlock - 살아 있는데 일을 하는가
 
@@ -205,13 +224,9 @@ Terminated / exit=143   ← 128 + 15 = SIGTERM
 |:--|:--|:--|:--|
 | `MULTI_THREAD_ENABLE` false → **true** | `MULTI_THREAD_ENABLE=true ./agent-leak-app-x86` | 2916 · 16:13:33 ~ | **꺼지지 않고 멈춤** (12분 29초 뒤 Ctrl+C) |
 
-```
-16:13:40 [Worker-Thread-1] LOCK ACQUIRED: [Shared_Memory_A]. (Holding...)
-16:13:40 [Worker-Thread-2] LOCK ACQUIRED: [Socket_Pool_B]. (Holding...)
-16:13:42 [Worker-Thread-1] WAITING for [Socket_Pool_B]...   (Status: BLOCKED)
-16:13:42 [Worker-Thread-2] WAITING for [Shared_Memory_A]... (Status: BLOCKED)
-(이후 로그 0줄)
-```
+**📸 3-1 앱 화면 - 두 일꾼이 열쇠를 하나씩 쥔 뒤 서로를 기다리며 둘 다 BLOCKED**
+
+<img src="screenshots/3_deadlock/3-1_deadlock_app.png" width="820">
 
 ![Deadlock Before & After](images/chart_deadlock.png)
 
@@ -222,7 +237,34 @@ Terminated / exit=143   ← 128 + 15 = SIGTERM
 
 ![로그에서 순환 대기로](images/07-deadlock-log-to-cycle.svg)
 
-📸 [스크린샷 3-1 ~ 3-6](#-3--deadlock-실험) · 📄 [리포트](#bug-deadlock---멀티스레드-모드에서-두-스레드가-서로의-자원을-기다리며-12분-넘게-무응답) · ✅ 평가표 [1-5](#1-5-deadlock-살아-있지만-멈춘-상태-식별) · [1-6](#1-6-deadlock-multi_thread_enable-재현과-회피)
+<details>
+<summary><b>📸 살아 있지만 멈춘 상태를 진단한 과정</b> · 5장 펼치기</summary>
+
+<br>
+
+**3-2 monitor.sh - CPU·메모리는 그대로, LOG_AGE만 계속 증가**
+
+<img src="screenshots/3_deadlock/3-2_deadlock_monitor.png" width="820">
+
+**3-3 ps -ef - 프로세스는 살아 있음 (PID 존재)**
+
+<img src="screenshots/3_deadlock/3-3_deadlock_ps_ef.png" width="820">
+
+**3-4 ps -L - 스레드 3개 모두 대기(S)**
+
+<img src="screenshots/3_deadlock/3-4_deadlock_ps_L.png" width="820">
+
+**3-5 top -H - 스레드별 CPU 0.0%**
+
+<img src="screenshots/3_deadlock/3-5_deadlock_top_H.png" width="820">
+
+**3-6 Ctrl+C - 12분 29초 뒤 사람이 종료**
+
+<img src="screenshots/3_deadlock/3-6_deadlock_ctrl_c.png" width="820">
+
+</details>
+
+📸 [스크린샷 전체 설명 3-1 ~ 3-6](#-3--deadlock-실험) · 📄 [리포트](#bug-deadlock---멀티스레드-모드에서-두-스레드가-서로의-자원을-기다리며-12분-넘게-무응답) · ✅ 평가표 [1-5](#1-5-deadlock-살아-있지만-멈춘-상태-식별) · [1-6](#1-6-deadlock-multi_thread_enable-재현과-회피)
 
 <br>
 
