@@ -242,23 +242,25 @@
 
 <br>
 
-**3-2 monitor.sh - CPU·메모리는 그대로, LOG_AGE만 계속 증가**
+진단 순서: **Q1 살아 있나? → Q2 일하고 있나? → Q3 언제부터 멈췄나? → Q4 무엇을 기다리나?**(위 3-1 앱 화면)
 
-<img src="screenshots/3_deadlock/3-2_deadlock_monitor.png" width="820">
-
-**3-3 ps -ef - 프로세스는 살아 있음 (PID 존재)**
+**Q1 살아 있나? · 3-3 ps -ef - PID 2915·2916 존재**
 
 <img src="screenshots/3_deadlock/3-3_deadlock_ps_ef.png" width="820">
 
-**3-4 ps -L - 스레드 3개 모두 대기(S)**
+**Q2 일하고 있나? · 3-4 ps -L - 스레드 3개 모두 대기(S), %CPU 0.0**
 
 <img src="screenshots/3_deadlock/3-4_deadlock_ps_L.png" width="820">
 
-**3-5 top -H - 스레드별 CPU 0.0%**
+**Q2 일하고 있나? · 3-5 top -H - TIME+ 0:00.00, 9분 넘게 CPU를 한 번도 안 씀**
 
 <img src="screenshots/3_deadlock/3-5_deadlock_top_H.png" width="820">
 
-**3-6 Ctrl+C - 12분 29초 뒤 사람이 종료**
+**Q3 언제부터 멈췄나? · 3-2 monitor.sh - CPU·메모리는 그대로, LOG_AGE만 계속 증가**
+
+<img src="screenshots/3_deadlock/3-2_deadlock_monitor.png" width="820">
+
+**끄기 · 3-6 Ctrl+C - 12분 29초 뒤 사람이 종료**
 
 <img src="screenshots/3_deadlock/3-6_deadlock_ctrl_c.png" width="820">
 
@@ -514,9 +516,21 @@ cd ~/agent-app; MEMORY_LIMIT=128 ./agent-leak-app-x86; echo "exit=$?"
 
 ##### 2. Evidence & Logs (증거 자료)
 
-###### ① monitor.sh 관제 로그 - 실제 메모리(RSS)가 일직선으로 증가
+###### Q1. 무엇이 변했나? - monitor.sh → 실제 메모리(RSS)만 일직선으로 증가
 
-전체: [logs/1_oom_monitor.log](logs/1_oom_monitor.log)
+<img src="screenshots/1_oom/1-2_oom_monitor.png" width="720">
+
+| 시각 | 16:06:23 | 16:06:25 | 16:06:28 | 16:06:31 | 16:06:33 | 16:06:36 | 16:06:39 |
+|---|---|---|---|---|---|---|---|
+| RSS | 17MB | 42MB | 68MB | 93MB | 118MB | 143MB | **사라짐** |
+
+- RSS(실제로 차지한 물리 메모리)가 **약 3초마다 25MB씩, 일정한 속도로** 늘었습니다. 줄어든 적은 한 번도 없습니다.
+- 같은 시간 CPU는 0~2%, 스레드는 1개로 그대로입니다. **CPU 문제가 아니라 메모리만의 문제**라는 뜻입니다.
+- 이 실행에서는 monitor.log에 같은 줄이 두 번씩 기록되었습니다(텍스트 발췌는 중복을 뺀 것). monitor.sh가 실수로 두 개 실행되었던 것으로 보이며, 값 자체는 두 줄이 같습니다.
+- ➡ 메모리가 늘다가 프로세스가 사라졌습니다. **누가, 왜 껐을까?**
+
+<details>
+<summary><b>텍스트로 보기</b> - monitor.sh 로그 발췌 · 전체: <a href="logs/1_oom_monitor.log">logs/1_oom_monitor.log</a></summary>
 
 ```
 [2026-11-20 16:06:22] MONITOR START - PROCESS:agent-leak-app PARENT:2362 PID:2363 INTERVAL:1s
@@ -529,17 +543,19 @@ cd ~/agent-app; MEMORY_LIMIT=128 ./agent-leak-app-x86; echo "exit=$?"
 [2026-11-20 16:06:39] PROCESS NOT FOUND - PID:2363 terminated
 ```
 
-| 시각 | 16:06:23 | 16:06:25 | 16:06:28 | 16:06:31 | 16:06:33 | 16:06:36 | 16:06:39 |
-|---|---|---|---|---|---|---|---|
-| RSS | 17MB | 42MB | 68MB | 93MB | 118MB | 143MB | **사라짐** |
+</details>
 
-- RSS(실제로 차지한 물리 메모리)가 **약 3초마다 25MB씩, 일정한 속도로** 늘었습니다. 줄어든 적은 한 번도 없습니다.
-- 같은 시간 CPU는 0~2%, 스레드는 1개로 그대로입니다. **CPU 문제가 아니라 메모리만의 문제**라는 뜻입니다.
-- 이 실행에서는 monitor.log에 같은 줄이 두 번씩 기록되었습니다(위 발췌는 중복을 뺀 것). monitor.sh가 실수로 두 개 실행되었던 것으로 보이며, 값 자체는 두 줄이 같습니다.
+###### Q2. 누가 껐나? - 앱 화면 → MemoryGuard가 SIGKILL로 종료
 
-###### ② 프로그램 실행 로그 - 종료 직전 핵심 구간
+<img src="screenshots/1_oom/1-1_oom_app.png" width="720">
 
-전체: [logs/1_oom_app.log](logs/1_oom_app.log)
+- Heap이 **150MB**가 되자 `Memory limit exceeded (150MB >= 128MB)` → `Self-terminating process 2363` → `Killed` → `exit=137`
+- 앱이 말하는 Heap 증가(25MB씩)와 monitor.sh가 잰 RSS 증가(25MB씩)가 **같은 속도**입니다. 앱이 실제로 메모리를 잡고 놓지 않는다는 뜻입니다.
+- `Self-terminating process 2363` = monitor.sh가 잡은 `PID:2363`과 **같은 프로세스**입니다.
+- 종료 코드 **137 = 128 + 9** → 9번 신호 **SIGKILL**로 강제 종료되었습니다.
+
+<details>
+<summary><b>텍스트로 보기</b> - 앱 로그 · 전체: <a href="logs/1_oom_app.log">logs/1_oom_app.log</a></summary>
 
 ```
 2026-11-20 16:06:23,827 [INFO] [MemoryWorker] Current Heap: 25MB
@@ -560,19 +576,8 @@ Killed
 exit=137
 ```
 
-- 앱이 말하는 Heap 증가(25MB씩)와 monitor.sh가 잰 RSS 증가(25MB씩)가 **같은 속도**입니다. 앱이 실제로 메모리를 잡고 놓지 않는다는 뜻입니다.
-- `Self-terminating process 2363` = monitor.sh가 잡은 `PID:2363`과 **같은 프로세스**입니다.
-- 종료 코드 **137 = 128 + 9** → 9번 신호 **SIGKILL**로 강제 종료되었습니다.
+</details>
 
-###### ③ 스크린샷
-
-**앱 화면** - `Memory limit exceeded` → `SELF-TERMINATED` → `Killed` → `exit=137`
-
-<img src="screenshots/1_oom/1-1_oom_app.png" width="720">
-
-**monitor.sh 화면** - RSS 17 → 143MB → `PROCESS NOT FOUND`
-
-<img src="screenshots/1_oom/1-2_oom_monitor.png" width="720">
 
 ##### 3. Root Cause Analysis (원인 분석)
 
@@ -684,9 +689,17 @@ cd ~/agent-app; CPU_MAX_OCCUPY=100 ./agent-leak-app-x86; echo "exit=$?"
 
 ##### 2. Evidence & Logs (증거 자료)
 
-###### ① 프로그램 실행 로그 - 부하 상승과 Watchdog 종료
+###### Q1. 왜 꺼졌나? - 앱 화면 → Watchdog이 SIGTERM으로 종료
 
-전체: [logs/2_cpu_app.log](logs/2_cpu_app.log)
+<img src="screenshots/2_cpu/2-1_cpu_app.png" width="720">
+
+- `Current Load`가 3초마다 올라 **51.22%**가 되자 `CPU Threshold Violated!` → `WATCHDOG ... (SIGTERM)` → `exit=143`
+- 종료 코드 **143 = 128 + 15** → 15번 신호 **SIGTERM**으로 종료되었습니다. 앱이 "오류로 죽은 것"이 아니라 **Watchdog이 보낸 종료 신호**로 꺼졌다는 증거입니다.
+- OOM(SIGKILL, 137)과 신호가 다릅니다. SIGTERM은 "정리하고 꺼져"라는 부드러운 신호라서 프로세스가 마무리할 기회가 있습니다.
+- ➡ 앱은 "부하가 50%를 넘었다"고 말합니다. **실제 CPU도 그만큼 높았을까?**
+
+<details>
+<summary><b>텍스트로 보기</b> - 앱 로그 · 전체: <a href="logs/2_cpu_app.log">logs/2_cpu_app.log</a></summary>
 
 ```
 2026-11-20 16:09:05,126 [INFO] [CpuWorker] Started. Maximum CPU Limit: 100%
@@ -706,12 +719,26 @@ Terminated
 exit=143
 ```
 
-- 종료 코드 **143 = 128 + 15** → 15번 신호 **SIGTERM**으로 종료되었습니다. 앱이 "오류로 죽은 것"이 아니라 **Watchdog이 보낸 종료 신호**로 꺼졌다는 증거입니다.
-- OOM(SIGKILL, 137)과 신호가 다릅니다. SIGTERM은 "정리하고 꺼져"라는 부드러운 신호라서 프로세스가 마무리할 기회가 있습니다.
+</details>
 
-###### ② monitor.sh 관제 로그 - 같은 시간의 실제 CPU
+###### Q2. 실제 CPU도 높았나? - monitor.sh · `top` → 아님 (0~10%)
 
-전체: [logs/2_cpu_monitor.log](logs/2_cpu_monitor.log)
+<img src="screenshots/2_cpu/2-2_cpu_monitor.png" width="720">
+
+<img src="screenshots/2_cpu/2-3_cpu_top_actual.png" width="720">
+
+| | 앱이 보고한 부하 (Current Load) | OS가 잰 실제 CPU (top) |
+|---|---|---|
+| 범위 | 5% → **51.22%** (계속 상승) | **0 ~ 10%** (대부분 0%) |
+| 메모리 | - | 17MB로 변화 없음 |
+
+- **두 값이 다릅니다.** 앱의 `Current Load`는 실제로 CPU를 그만큼 쓴 값이 아니라, 앱 안에서 계산해 올리는 **시뮬레이션 수치**로 판단됩니다. Watchdog은 이 앱 내부 수치를 보고 종료를 결정했습니다.
+- 같은 순간 앱 로그는 `15:40:57,774 [CpuWorker] Current Load: 25.34%`였지만, `top`의 자식 프로세스(NI 10) `%CPU`는 **1.3**, 서버 전체는 `99.5 id`(99.5% 놀고 있음)였습니다.
+- 그래서 이 장애는 `top`으로는 "급상승"이 보이지 않고, **앱 로그로만 확인**됩니다. 관제 도구 값과 앱 로그를 **함께** 봐야 하는 이유입니다.
+- `STAT:SN+`의 `N`은 우선순위를 낮춘 상태(nice)입니다. 앱 로그의 `[SafetyGuard] Process priority lowered (nice=10).`와 일치합니다.
+
+<details>
+<summary><b>텍스트로 보기</b> - monitor.sh 로그 발췌 · 전체: <a href="logs/2_cpu_monitor.log">logs/2_cpu_monitor.log</a></summary>
 
 ```
 [2026-11-20 16:09:04] MONITOR START - PROCESS:agent-leak-app PARENT:2605 PID:2606 INTERVAL:1s
@@ -722,30 +749,8 @@ exit=143
 [2026-11-20 16:09:49] PROCESS NOT FOUND - PID:2606 terminated
 ```
 
-| | 앱이 보고한 부하 (Current Load) | OS가 잰 실제 CPU (top) |
-|---|---|---|
-| 범위 | 5% → **51.22%** (계속 상승) | **0 ~ 10%** (대부분 0%) |
-| 메모리 | - | 17MB로 변화 없음 |
+</details>
 
-- **두 값이 다릅니다.** 앱의 `Current Load`는 실제로 CPU를 그만큼 쓴 값이 아니라, 앱 안에서 계산해 올리는 **시뮬레이션 수치**로 판단됩니다. Watchdog은 이 앱 내부 수치를 보고 종료를 결정했습니다.
-- 그래서 이 장애는 `top`으로는 "급상승"이 보이지 않고, **앱 로그로만 확인**됩니다. 관제 도구 값과 앱 로그를 **함께** 봐야 하는 이유입니다.
-- `STAT:SN+`의 `N`은 우선순위를 낮춘 상태(nice)입니다. 앱 로그의 `[SafetyGuard] Process priority lowered (nice=10).`와 일치합니다.
-
-###### ③ 스크린샷
-
-**앱 화면** - Current Load 5% → 51.22% → `WATCHDOG ... SIGTERM` → `exit=143`
-
-<img src="screenshots/2_cpu/2-1_cpu_app.png" width="720">
-
-**monitor.sh 화면** - 같은 시간 실제 CPU 0~10%
-
-<img src="screenshots/2_cpu/2-2_cpu_monitor.png" width="720">
-
-**`top`으로 직접 본 실제 CPU** (리허설 실행, `CPU_MAX_OCCUPY=40`, PID 1220, 15:40:57)
-
-<img src="screenshots/2_cpu/2-3_cpu_top_actual.png" width="720">
-
-- 같은 순간 앱 로그는 `15:40:57,774 [CpuWorker] Current Load: 25.34%`였지만, `top`의 자식 프로세스(NI 10) `%CPU`는 **1.3**, 서버 전체는 `99.5 id`(99.5% 놀고 있음)였습니다.
 
 ##### 3. Root Cause Analysis (원인 분석)
 
@@ -838,15 +843,29 @@ cd ~/agent-app; MULTI_THREAD_ENABLE=true ./agent-leak-app-x86; echo "exit=$?"
 
 ##### 2. Evidence & Logs (증거 자료)
 
-###### ① 살아 있다 - PID 존재
+> 진단은 **질문 4개를 순서대로** 했습니다. 질문 하나에 도구 하나를 쓰고, 그 답이 다음 질문을 정합니다.
+> **살아 있나? → 일하고 있나? → 언제부터 멈췄나? → 무엇을 기다리나?** ([2-3 진단 순서](#2-3-살아-있지만-멈춘-상태의-진단-순서))
 
-```
-$ ps -ef | grep [a]gent-leak
-arang   2915   1031  0 16:13 pts/0  00:00:00 ./agent-leak-app-x86     ← 부모
-arang   2916   2915  0 16:13 pts/0  00:00:00 ./agent-leak-app-x86     ← 자식 (실제 일꾼)
-```
+###### Q1. 살아 있나? - `ps -ef` → 살아 있음
 
-###### ② 아무 일도 안 한다 - 스레드별 CPU·메모리 변화 없음
+<img src="screenshots/3_deadlock/3-3_deadlock_ps_ef.png" width="720">
+
+- PID 2915(부모)와 2916(자식)이 **둘 다 있습니다.** OOM·CPU처럼 꺼진 게 아닙니다.
+- ➡ 살아 있다면, **일은 하고 있을까?**
+
+###### Q2. 일하고 있나? - `ps -L` · `top -H` → 아무것도 안 함
+
+<img src="screenshots/3_deadlock/3-4_deadlock_ps_L.png" width="720">
+
+<img src="screenshots/3_deadlock/3-5_deadlock_top_H.png" width="720">
+
+- 3개 스레드 모두 `S`(잠든 채 기다림), `%CPU 0.0`, **`TIME+ 0:00.00`** → 9분 넘게 CPU를 단 1초도 쓰지 않았습니다.
+- `STAT SNl+` = **S** 대기 · **N** 우선순위 낮춤(nice) · **l** 멀티스레드 · **+** 터미널 앞에서 실행 중
+- 만약 무한 루프였다면 CPU가 100% 가까이 나왔을 것입니다. **CPU 0%로 멈춘 것은 "무언가를 기다리는 중"**이라는 뜻입니다.
+- ➡ 그런데 CPU 0%는 **할 일이 없어 쉬는 중**일 때도 똑같습니다. 정말 멈춘 건지, **언제부터** 그런지 확인해야 합니다.
+
+<details>
+<summary><b>텍스트로 보기</b> - ps -L · top -H 출력</summary>
 
 ```
 $ ps -L -o pid,lwp,stat,pcpu,rss,etime -p 2916
@@ -865,13 +884,20 @@ Threads:   3 total,   0 running,   3 sleeping
  2964 arang 30 10 173244 18140 10020 S  0.0  0.5 0:00.00 agent-leak-app-
 ```
 
-- 3개 스레드 모두 `S`(잠든 채 기다림), `%CPU 0.0`, **`TIME+ 0:00.00`** → 9분 넘게 CPU를 단 1초도 쓰지 않았습니다.
-- `STAT SNl+` = **S** 대기 · **N** 우선순위 낮춤(nice) · **l** 멀티스레드 · **+** 터미널 앞에서 실행 중
-- 만약 무한 루프였다면 CPU가 100% 가까이 나왔을 것입니다. **CPU 0%로 멈춘 것은 "무언가를 기다리는 중"**이라는 뜻입니다.
+</details>
 
-###### ③ monitor.sh 관제 로그 - 로그가 멈춘 시간(LOG_AGE)만 계속 증가
+###### Q3. 언제부터 멈췄나? - monitor.sh `LOG_AGE` → 16:13:42 이후 계속 멈춤
 
-전체: [logs/3_deadlock_monitor.log](logs/3_deadlock_monitor.log)
+<img src="screenshots/3_deadlock/3-2_deadlock_monitor.png" width="720">
+
+![LOG_AGE 그래프](images/chart_deadlock.png)
+
+- `LOG_AGE`는 monitor.sh가 앱 로그 파일의 마지막 수정 시각을 보고 계산한 값입니다. 정상이면 0~3초를 오가는데, 여기서는 **0초 → 748초(12분 28초)까지 쉬지 않고 증가**했습니다. (16:26:11에 0초로 돌아간 것은 Ctrl+C를 눌러 앱이 종료 로그를 썼기 때문입니다.)
+- CPU 0%, RSS 17MB, 스레드 3개가 12분 동안 **한 번도 변하지 않았습니다.**
+- ➡ 멈춘 건 확실합니다. 그럼 **무엇을 기다리느라** 멈췄을까?
+
+<details>
+<summary><b>텍스트로 보기</b> - monitor.sh 로그 발췌 · 전체: <a href="logs/3_deadlock_monitor.log">logs/3_deadlock_monitor.log</a></summary>
 
 ```
 [2026-11-20 16:13:40] PROCESS:agent-leak-app PID:2916 CPU:0.0% MEM:0.4% RSS:17MB THREADS:1 STAT:SN+  LOG_AGE:5s
@@ -881,14 +907,18 @@ Threads:   3 total,   0 running,   3 sleeping
 [2026-11-20 16:26:10] PROCESS:agent-leak-app PID:2916 CPU:0.0% MEM:0.4% RSS:17MB THREADS:3 STAT:SNl+ LOG_AGE:748s
 ```
 
-![LOG_AGE 그래프](images/chart_deadlock.png)
+</details>
 
-- `LOG_AGE`는 monitor.sh가 앱 로그 파일의 마지막 수정 시각을 보고 계산한 값입니다. 정상이면 0~3초를 오가는데, 여기서는 **0초 → 748초(12분 28초)까지 쉬지 않고 증가**했습니다. (16:26:11에 0초로 돌아간 것은 Ctrl+C를 눌러 앱이 종료 로그를 썼기 때문입니다.)
-- CPU 0%, RSS 17MB, 스레드 3개가 12분 동안 **한 번도 변하지 않았습니다.**
+###### Q4. 무엇을 기다리나? - 앱 로그 마지막 줄 → 서로를 기다림
 
-###### ④ 프로그램 실행 로그 - 마지막 기록
+<img src="screenshots/3_deadlock/3-1_deadlock_app.png" width="720">
 
-전체: [logs/3_deadlock_app.log](logs/3_deadlock_app.log)
+- 마지막 로그는 두 일꾼의 `WAITING for [...] (Status: BLOCKED)` 두 줄이고, **그 뒤 12분 29초 동안 0줄**입니다.
+- Thread-1은 `Socket_Pool_B`를, Thread-2는 `Shared_Memory_A`를 기다립니다. 각자 기다리는 자원은 **상대가 쥐고 있는 것**입니다.
+- ➡ 이 로그를 스레드별로 나눠 읽은 것이 아래 **3. 원인 분석**입니다.
+
+<details>
+<summary><b>텍스트로 보기</b> - 앱 로그 마지막 구간 · 전체: <a href="logs/3_deadlock_app.log">logs/3_deadlock_app.log</a></summary>
 
 ```
 16:13:40,741 [INFO] [Worker-Thread-1] Process Started. Attempting to lock [Shared_Memory_A]...
@@ -904,27 +934,7 @@ Threads:   3 total,   0 running,   3 sleeping
 16:26:11,728 [INFO] User interrupted process. Shutting down gracefully...
 ```
 
-###### ⑤ 스크린샷
-
-**앱 화면** - 마지막 로그 `WAITING ... (Status: BLOCKED)` 두 줄
-
-<img src="screenshots/3_deadlock/3-1_deadlock_app.png" width="720">
-
-**monitor.sh** - CPU 0% · RSS 17MB 고정, LOG_AGE만 증가
-
-<img src="screenshots/3_deadlock/3-2_deadlock_monitor.png" width="720">
-
-**`ps -ef`** - PID 2915, 2916 살아 있음
-
-<img src="screenshots/3_deadlock/3-3_deadlock_ps_ef.png" width="720">
-
-**`ps -L`** - 스레드 3개 모두 `SNl+`, `%CPU 0.0`
-
-<img src="screenshots/3_deadlock/3-4_deadlock_ps_L.png" width="720">
-
-**`top -H`** - 스레드 3개 모두 `S`, `TIME+ 0:00.00`
-
-<img src="screenshots/3_deadlock/3-5_deadlock_top_H.png" width="720">
+</details>
 
 ##### 3. Root Cause Analysis (원인 분석)
 
