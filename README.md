@@ -203,7 +203,7 @@ Terminated / exit=143   ← 128 + 15 = SIGTERM
 
 | 바꾼 값 | 실행 | PID · 시각 | 결과 |
 |:--|:--|:--|:--|
-| `MULTI_THREAD_ENABLE` false → **true** | `MULTI_THREAD_ENABLE=true ./agent-leak-app-x86` | 2916 · 16:13:40 ~ | **꺼지지 않고 멈춤** (12분 29초 뒤 Ctrl+C) |
+| `MULTI_THREAD_ENABLE` false → **true** | `MULTI_THREAD_ENABLE=true ./agent-leak-app-x86` | 2916 · 16:13:33 ~ | **꺼지지 않고 멈춤** (12분 29초 뒤 Ctrl+C) |
 
 ```
 16:13:40 [Worker-Thread-1] LOCK ACQUIRED: [Shared_Memory_A]. (Holding...)
