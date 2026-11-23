@@ -8,16 +8,23 @@
 
 <br>
 
-## 📖 이 문서 읽는 법
+## ⚡ 30초 요약
 
-이 README 하나에 **과제 설명 → 리포트 3건 → 평가표 답변 → 수행 과정**이 모두 들어 있습니다.
+1. 정상값에서 **환경변수 하나만 바꿔** 장애 3가지를 모두 재현했습니다 - OOM **17초 만에 종료** · CPU Spike **46초 만에 종료** · Deadlock **12분 29초 멈춤**
+2. 원인은 **앱 로그 + OS 측정값**(ps · top · monitor.sh)으로 증명했습니다 - 꺼진 두 장애는 앱 안의 감시 장치(MemoryGuard · Watchdog)가 껐고, 멈춘 장애는 두 스레드가 서로를 기다렸습니다
+3. 값을 되돌리자 **3건 모두 8분 이상 정상 동작** - 단, 환경변수 조정은 **임시 조치**이고 근본 해결은 코드 수정입니다
 
-| 부분 | 내용 | 바로 가기 |
-|:--|:--|:--|
-| **Part 1** 과제 이해 | 무슨 과제인지, 지급된 프로그램, 어떻게 분석했고 결과가 무엇인지 | [이 과제는 무엇인가](#-이-과제는-무엇인가) |
-| **Part 2** 장애 리포트 3건 | 실험마다 현상 → 증거(스크린샷) → 원인 → 조치(그래프) | [🔴 OOM](#-리포트-1-oom) · [🟠 CPU](#-리포트-2-cpu-spike) · [🟣 Deadlock](#-리포트-3-deadlock) |
-| **Part 3** 평가표 기준 설명 | 평가표 20문항, 질문마다 답과 근거 위치 | [한눈에 보는 답](#-한눈에-보는-답-20문항) |
-| 부록 | 파일 구성, 실제로 친 명령 전체 | [부록](#-부록) |
+| | 🔴 [OOM](#-리포트-1-oom) | 🟠 [CPU Spike](#-리포트-2-cpu-spike) | 🟣 [Deadlock](#-리포트-3-deadlock) |
+|:--|:--|:--|:--|
+| **증상** | 17초 만에 꺼짐 | 46초 만에 꺼짐 | 꺼지지 않고 **멈춤** |
+| **원인** | 메모리를 빌리고 반납 안 함 | 부하 상한이 종료 기준보다 높음 | 두 스레드가 서로를 기다림 |
+| **누가 껐나** | MemoryGuard (SIGKILL) | Watchdog (SIGTERM) | 아무도 안 끔 → 사람이 Ctrl+C |
+| **조치** | `MEMORY_LIMIT` 128 → **512** | `CPU_MAX_OCCUPY` 100 → **40** | `MULTI_THREAD_ENABLE` → **false** |
+| **After** | ✅ 8분 이상 생존 | ✅ 8분 이상 생존 | ✅ 로그가 계속 쌓임 |
+
+> 장애 이름을 누르면 그 리포트로 이동합니다.
+
+**문서 구성** · [Part 1 과제 이해](#part-1-과제-이해) → [Part 2 장애 리포트 3건](#part-2-장애-리포트-3건) → [Part 3 평가표 20문항](#-한눈에-보는-답-20문항) → [부록 · 실제로 친 명령](#-부록)
 
 <br>
 
@@ -50,18 +57,26 @@
 
 ## 📦 지급된 프로그램: agent-leak-app
 
-과제가 `agent-app-leak.zip`을 줬고, 압축을 풀면 실행 파일 2개가 나옵니다. 이번에는 Intel Mac이라 `x86`을 썼습니다.
+> **한 줄 요약:** 켤 때 내 세팅을 6가지로 검사하고, 켜진 뒤에는 **환경변수 3개의 값을 보고 어떤 장애를 일으킬지** 고르는 연습용 프로그램 · `agent-app-leak.zip`을 풀어 Intel Mac용 `agent-leak-app-x86`을 썼습니다.
 
-| 파일 | 대상 |
-|:--|:--|
-| `agent-leak-app-x86` | Intel · AMD |
-| `agent-leak-app-arm64` | Apple M칩 |
+**환경변수 3개로 장애를 고릅니다**
 
-과제 문서에는 실행 조건만 있어서 **직접 실행해 보고** 하는 일을 확인했습니다. → [부록 · 수행과정](#-부록)
+| 환경변수 | 범위 | 안전한 값 | 장애가 나는 값 | 일어나는 일 |
+|:--|:--|:--:|:--:|:--|
+| `MEMORY_LIMIT` | 50~512 (MB) | 512 | 128 | 🔴 메모리가 계속 늘다가 **MemoryGuard가 강제 종료** |
+| `CPU_MAX_OCCUPY` | 10~100 (%) | 40 | 100 | 🟠 부하가 50%를 넘는 순간 **Watchdog이 종료** |
+| `MULTI_THREAD_ENABLE` | true / false | false | true | 🟣 스레드 둘이 서로를 기다리며 **멈춤** |
 
-> **한 줄 요약:** 켤 때 내 세팅을 6가지로 검사하고, 켜진 뒤에는 **환경변수 3개의 값을 보고 어떤 장애를 일으킬지** 고르는 연습용 프로그램
+세 값이 모두 안전하면 `Scenario Selected: [Healthy System Monitoring]` → 장애 없이 계속 동작합니다. 이 정상 실행을 세 실험의 **After**로 썼습니다.
 
-### ① 켤 때: 실행 조건 6가지를 검사한다
+![과제가 요구하는 흐름과 3가지 장애](images/00-overall-flow.svg)
+
+<details>
+<summary><b>더 보기</b> · 켤 때 검사하는 6가지 · 알아 둘 동작 · 과제 문서와 다른 점 · 📸 0-1 ~ 0-3</summary>
+
+<br>
+
+**① 켤 때: 실행 조건 6가지를 검사한다**
 
 | 단계 | 검사 내용 | 맞추는 방법 |
 |:--:|:--|:--|
@@ -79,17 +94,7 @@
 <img src="screenshots/0_setup/0-1_boot_ok.png" width="820">
 
 
-### ② 켜진 뒤: 환경변수 3개로 장애를 고른다
-
-| 환경변수 | 범위 | 안전한 값 | 장애가 나는 값 | 일어나는 일 |
-|:--|:--|:--:|:--:|:--|
-| `MEMORY_LIMIT` | 50~512 (MB) | 512 | 128 | 🔴 메모리가 계속 늘다가 **MemoryGuard가 강제 종료** |
-| `CPU_MAX_OCCUPY` | 10~100 (%) | 40 | 100 | 🟠 부하가 50%를 넘는 순간 **Watchdog이 종료** |
-| `MULTI_THREAD_ENABLE` | true / false | false | true | 🟣 스레드 둘이 서로를 기다리며 **멈춤** |
-
-세 값이 모두 안전하면 `Scenario Selected: [Healthy System Monitoring]` → 장애 없이 계속 동작합니다. 이 정상 실행을 세 실험의 **After**로 썼습니다.
-
-### ③ 알아 둘 동작
+**③ 알아 둘 동작**
 
 | 관찰 | 분석에 준 영향 |
 |:--|:--|
@@ -112,7 +117,8 @@
 
 </details>
 
-### ④ 과제 문서와 다른 점
+
+**④ 과제 문서와 다른 점**
 
 직접 실행해 보니 문서와 다른 부분이 있어서 **실제 앱 동작을 기준**으로 했습니다.
 
@@ -123,11 +129,7 @@
 | `CPU_MAX_OCCUPY`로 종료 기준 조정 | 이 값은 부하의 **상한**. 종료 기준은 약 50%로 고정 |
 | top/ps로 CPU 급상승 확인 | 앱이 보고한 부하(51%)와 실제 CPU(0~10%)가 다름 → 둘 다 기록 |
 
-### 이 프로그램으로 할 일
-
-위의 3가지 장애를 하나씩 일으키고, 모두 같은 흐름(증거 → 원인 → 조치 → 비교)으로 분석합니다.
-
-![과제가 요구하는 흐름과 3가지 장애](images/00-overall-flow.svg)
+</details>
 
 <br>
 
@@ -137,13 +139,20 @@
 
 ![분석 구조](images/06-analysis-structure.svg)
 
+<details>
+<summary><b>단계별로 자세히</b> · 궁금했던 것 · 한 일 · 알게 된 것</summary>
+
+<br>
+
 | 단계 | 궁금했던 것 | 한 일 | 알게 된 것 | 결과물 |
 |:--:|:--|:--|:--|:--|
 | **1** 앱 파악 | 이 앱은 무엇을 하나? | 문서에 조건만 있어서 **직접 실행** | 부팅 검사 6단계, 값에 따라 시나리오가 바뀜, **프로세스가 2개** → [위의 설명](#-지급된-프로그램-agent-leak-app) | [부록 · 수행과정](#-부록) |
 | **2** 관제 준비 | 무엇을 재야 하나? | B4-1 monitor.sh를 고쳐서 **자식 PID를 1초마다** 기록 | 부모는 메모리가 1MB에서 그대로라, 자식을 재야 누수가 보임 | [bin/monitor.sh](bin/monitor.sh) |
 | **3** 실험 설계 | 원인을 어떻게 증명하나? | 정상값(512/40/false)에서 **값 하나만** 바꿔 4번 실행 | 바꾼 값 하나가 장애를 일으킨 원인이라고 말할 수 있음 | [logs/](logs/) |
-| **4** 교차 확인 | 앱의 말이 사실인가? | **앱 로그**와 **OS 측정값**(ps·top·monitor.sh)을 나란히 비교 | 메모리는 일치, **CPU는 불일치**(앱 51% vs 실제 0~10%), 데드락은 PID 있음 + CPU 0 | [CPU 리포트 증거](#cpu--2-evidence--logs-증거-자료) |
+| **4** 교차 확인 | 앱의 말이 사실인가? | **앱 로그**와 **OS 측정값**(ps·top·monitor.sh)을 나란히 비교 | 메모리는 일치, **CPU는 불일치**(앱 51% vs 실제 0~10%), 데드락은 PID 있음 + CPU 0 | [CPU 리포트 증거](#-리포트-2-cpu-spike) |
 | **5** 기록 | 동료가 읽고 알 수 있나? | Issue 형식으로 PID·시각·로그·스크린샷을 붙여 정리 | 3건 모두 같은 4칸 구조 | [Part 2 리포트 3건](#part-2-장애-리포트-3건) |
+
+</details>
 
 **장애를 구분한 기준** - 결국 세 가지 질문으로 어떤 장애인지 가렸습니다.
 
@@ -152,20 +161,6 @@
 | 프로세스가 살아 있나? | `ps -ef` | ✘ 꺼짐 | ✘ 꺼짐 | ✔ **살아 있음** |
 | 마지막 로그는? | 앱 로그 | `MemoryGuard` | `WATCHDOG` | `BLOCKED` |
 | 무엇이 변했나? | monitor.sh | **메모리** 증가 | 앱이 보고한 **부하** 증가 | 아무것도 안 변함 (**로그만 멈춤**) |
-
-<br>
-
-## 📌 결과 한눈에
-
-| | 🔴 [OOM](#-리포트-1-oom) | 🟠 [CPU Spike](#-리포트-2-cpu-spike) | 🟣 [Deadlock](#-리포트-3-deadlock) |
-|:--|:--|:--|:--|
-| **증상** | 17초 만에 꺼짐 | 46초 만에 꺼짐 | 꺼지지 않고 **멈춤** |
-| **원인** | 메모리를 빌리고 반납 안 함 | 부하 상한이 종료 기준보다 높음 | 두 스레드가 서로를 기다림 |
-| **누가 껐나** | MemoryGuard (SIGKILL) | Watchdog (SIGTERM) | 아무도 안 끔 → 사람이 Ctrl+C |
-| **조치** | `MEMORY_LIMIT` 128 → **512** | `CPU_MAX_OCCUPY` 100 → **40** | `MULTI_THREAD_ENABLE` → **false** |
-| **After** | ✅ 8분 이상 생존 | ✅ 8분 이상 생존 | ✅ 로그가 계속 쌓임 |
-
-> 장애 이름을 누르면 Part 2의 리포트로 이동합니다. 로그 · 스크린샷 · 그래프는 모두 리포트 안에 있습니다.
 
 <br>
 
@@ -201,17 +196,9 @@
 
 # Part 2. 장애 리포트 3건
 
-> 실험 3가지를 **GitHub Issue 형식**으로 정리했습니다. 실험 하나의 모든 것(로그 · 스크린샷 · 그래프 · 원인 · 조치)이 리포트 하나에 들어 있습니다.
+> 실험 하나 = 리포트 하나. 리포트마다 **한 장 요약 → Before & After 그래프**가 먼저 보이고, GitHub Issue 4칸(**현상 → 증거 → 원인 → 조치**)은 눌러서 펼칩니다.
 
-**실험 방법** - 정상값(`512 / 40 / false`)에서 **값 하나만** 바꿔 실행하고, 다른 탭에서 monitor.sh로 1초마다 기록했습니다. 고친 값(After)은 정상 실행 한 번(PID 7633, 8분)으로 세 실험을 함께 비교합니다.
-
-| 리포트 | 바꾼 값 (정상 → 장애) | PID | 결과 | 바로 가기 |
-|:--|:--|:--:|:--|:--|
-| 🔴 1. OOM | `MEMORY_LIMIT` 512 → **128** | 2363 | 17초 만에 강제 종료 (exit=137) | [현상](#oom--1-description-현상-설명) · [증거](#oom--2-evidence--logs-증거-자료) · [원인](#oom--3-root-cause-analysis-원인-분석) · [조치](#oom--4-workaround--verification-조치-및-검증) |
-| 🟠 2. CPU Spike | `CPU_MAX_OCCUPY` 40 → **100** | 2606 | 46초 만에 종료 (exit=143) | [현상](#cpu--1-description-현상-설명) · [증거](#cpu--2-evidence--logs-증거-자료) · [원인](#cpu--3-root-cause-analysis-원인-분석) · [조치](#cpu--4-workaround--verification-조치-및-검증) |
-| 🟣 3. Deadlock | `MULTI_THREAD_ENABLE` false → **true** | 2916 | 꺼지지 않고 멈춤 (12분 29초 → Ctrl+C) | [현상](#deadlock--1-description-현상-설명) · [증거](#deadlock--2-evidence--logs-증거-자료) · [원인](#deadlock--3-root-cause-analysis-원인-분석) · [조치](#deadlock--4-workaround--verification-조치-및-검증) |
-
-세 리포트 모두 **맨 위 요약 → 1. 현상 → 2. 증거 → 3. 원인 → 4. 조치·검증** 같은 순서입니다. 증거는 **질문 → 스크린샷 → 의미 → 다음 질문** 흐름으로 읽습니다.
+**실험 방법** - 정상값(`512 / 40 / false`)에서 **값 하나만** 바꿔 실행하고, 다른 탭에서 monitor.sh로 1초마다 기록했습니다. After는 정상 실행 한 번(PID 7633, 8분)으로 세 실험을 함께 비교합니다.
 
 <br>
 
@@ -219,25 +206,20 @@
 
 > **Issue 제목** · [Bug] OOM - 메모리가 3초마다 25MB씩 쌓이다가 17초 만에 MemoryGuard가 프로세스를 강제 종료
 
-> **요약**
-> - 메모리가 3초마다 25MB씩 늘고 줄지 않았다 (메모리 누수).
-> - 한도 128MB를 넘자 앱의 MemoryGuard가 **자기 자신을 SIGKILL로 강제 종료**했다 (17초, exit=137).
-> - 한도를 512MB로 올리자 앱이 525MB마다 스스로 정리하며 **8분 이상 살아남았다.** 단, 누수 자체는 그대로다.
-
-| 항목 | 내용 |
-|---|---|
-| 장애 유형 | Memory Leak → OOM (메모리 한도 초과로 강제 종료) |
-| 대상 | `agent-leak-app-x86` · PID **2363** (부모 2362) |
-| 발생 시각 | 2026-11-20 16:06:21 시작 → **16:06:38 종료** (약 17초) |
-| 환경 | UTM VM, Ubuntu Server 22.04.5 (x86_64), CPU 2코어, RAM 4GB, 계정 `arang` |
-| 재현 조건 | `MEMORY_LIMIT=128` (나머지는 정상값 `CPU_MAX_OCCUPY=40`, `MULTI_THREAD_ENABLE=false`) |
-| 조치 | `MEMORY_LIMIT=512`로 올림 → **8분 동안 종료 없이 동작** 확인 |
+| 한 장 요약 | |
+|:--|:--|
+| 🩺 **현상** | 켜고 **17초** 만에 강제 종료 (`Killed`, exit=137) |
+| 🔎 **증거** | 실제 메모리(RSS)가 3초마다 +25MB (17 → 143MB) · 앱 로그 `MemoryGuard Self-terminating process 2363` |
+| 🧠 **원인** | 메모리를 빌리고 반납하지 않음(**누수**) → 한도 128MB 초과 → 앱의 MemoryGuard가 SIGKILL |
+| 🛠 **조치** | `MEMORY_LIMIT` 128 → **512** → **8분 이상 생존** · 누수는 그대로라 임시 조치 |
+| 📋 **기록** | PID 2363 · 2026-11-20 16:06:21 ~ 16:06:38 · 재현 `MEMORY_LIMIT=128` |
 
 ![OOM Before & After](images/chart_oom.png)
 
----
+<details>
+<summary><b>1. 현상</b> · Description</summary>
 
-### OOM · 1. Description (현상 설명)
+<br>
 
 - **무엇이:** 앱을 켜고 약 17초 뒤, 터미널에 `SELF-TERMINATED (Memory Limit Exceeded)`와 `Killed`가 찍히며 프로세스가 사라졌습니다. 오류 창이나 경고 없이 갑자기 꺼졌습니다.
 - **언제, 어떤 조건에서:** `MEMORY_LIMIT`을 앱이 권장하는 값(256MB)보다 낮은 **128MB**로 두고 실행했을 때 발생합니다. 부팅할 때부터 앱이 `[ MEMORY ] Limit: 128MB [ WARNING: Recommend Over 256MB ]`라고 경고했습니다.
@@ -247,7 +229,12 @@
 cd ~/agent-app; MEMORY_LIMIT=128 ./agent-leak-app-x86; echo "exit=$?"
 ```
 
-### OOM · 2. Evidence & Logs (증거 자료)
+</details>
+
+<details>
+<summary><b>2. 증거</b> · Evidence & Logs · 질문 흐름 · 스크린샷 2장</summary>
+
+<br>
 
 🔎 **Q1. 무엇이 변했나? - monitor.sh → 실제 메모리(RSS)만 일직선으로 증가**
 
@@ -311,8 +298,12 @@ exit=137
 
 </details>
 
+</details>
 
-### OOM · 3. Root Cause Analysis (원인 분석)
+<details>
+<summary><b>3. 원인</b> · Root Cause Analysis</summary>
+
+<br>
 
 ![메모리 누수 개념](images/01-memory-leak.svg)
 
@@ -334,7 +325,12 @@ exit=137
 | 2단계 | 스왑도 바닥나면 OS의 **OOM Killer**가 점수를 매겨 프로세스를 골라 죽임 → **엉뚱한 다른 서비스(DB, sshd 등)가 죽을 수도** 있음 |
 | MemoryGuard | 누수가 있는 **범인 프로세스 하나만** 한도에서 미리 끊음 → 나머지 서비스는 보호됨 |
 
-### OOM · 4. Workaround & Verification (조치 및 검증)
+</details>
+
+<details>
+<summary><b>4. 조치 · 검증</b> · Workaround & Verification · 스크린샷 2장</summary>
+
+<br>
 
 #### 조치: `MEMORY_LIMIT`을 128 → 512로 상향
 
@@ -385,29 +381,28 @@ After 실행의 정리 순간 (앱 로그와 monitor.sh가 같은 순간에 맞�
 
 <br>
 
+</details>
+
+<br>
+
 ## 🟠 리포트 2. CPU Spike
 
 > **Issue 제목** · [Bug] CPU Spike - 앱이 보고한 CPU 부하가 50%를 넘는 순간 Watchdog이 SIGTERM으로 종료
 
-> **요약**
-> - 앱의 `CpuWorker`가 부하를 3초마다 올렸고, **50%를 넘는 순간 Watchdog이 SIGTERM으로 종료**했다 (46초, exit=143).
-> - 같은 시간 OS가 잰 실제 CPU는 0~10%였다. 종료는 **앱이 보고한 내부 수치** 기준이다.
-> - 상한을 40%로 낮추자 부하가 40%에서 멈췄다 내려가기를 반복하며 **8분 이상 살아남았다.**
-
-| 항목 | 내용 |
-|---|---|
-| 장애 유형 | CPU 과점유 → Watchdog 보호 종료 |
-| 대상 | `agent-leak-app-x86` · PID **2606** (부모 2605) |
-| 발생 시각 | 2026-11-20 16:09:03 시작 → **16:09:48 종료** (약 46초) |
-| 환경 | UTM VM, Ubuntu Server 22.04.5 (x86_64), CPU 2코어, RAM 4GB, 계정 `arang` |
-| 재현 조건 | `CPU_MAX_OCCUPY=100` (나머지는 정상값 `MEMORY_LIMIT=512`, `MULTI_THREAD_ENABLE=false`) |
-| 조치 | `CPU_MAX_OCCUPY=40`으로 낮춤 → **8분 동안 종료 없이 동작** 확인 |
+| 한 장 요약 | |
+|:--|:--|
+| 🩺 **현상** | 켜고 **46초** 만에 종료 (`Terminated`, exit=143) |
+| 🔎 **증거** | 앱이 보고한 부하 5 → **51.22%** → `CPU Threshold Violated!` · 같은 시간 OS가 잰 실제 CPU는 **0~10%** |
+| 🧠 **원인** | 부하 상한(100)이 Watchdog 종료 기준(약 50%)보다 높음 → 기준을 넘는 순간 SIGTERM |
+| 🛠 **조치** | `CPU_MAX_OCCUPY` 100 → **40** → 40%에서 식히기를 반복하며 **8분 이상 생존** |
+| 📋 **기록** | PID 2606 · 2026-11-20 16:09:03 ~ 16:09:48 · 재현 `CPU_MAX_OCCUPY=100` (6번 실행, 6번 모두 같은 패턴) |
 
 ![CPU Before & After](images/chart_cpu.png)
 
----
+<details>
+<summary><b>1. 현상</b> · Description</summary>
 
-### CPU · 1. Description (현상 설명)
+<br>
 
 - **무엇이:** 앱을 켜면 `[CpuWorker] Current Load`가 3초마다 오르다가, 약 46초 뒤 `CPU Threshold Violated!` → `WATCHDOG: INITIATING EMERGENCY ABORT (SIGTERM)` → `Terminated`와 함께 꺼졌습니다.
 - **언제, 어떤 조건에서:** `CPU_MAX_OCCUPY`를 50보다 크게 두었을 때 발생합니다. 부팅할 때 앱이 `[ CPU ] Limit: 100% [ WARNING: Recommend Under 50% ]`라고 경고했습니다.
@@ -417,7 +412,12 @@ After 실행의 정리 순간 (앱 로그와 monitor.sh가 같은 순간에 맞�
 cd ~/agent-app; CPU_MAX_OCCUPY=100 ./agent-leak-app-x86; echo "exit=$?"
 ```
 
-### CPU · 2. Evidence & Logs (증거 자료)
+</details>
+
+<details>
+<summary><b>2. 증거</b> · Evidence & Logs · 질문 흐름 · 스크린샷 3장</summary>
+
+<br>
 
 🔎 **Q1. 왜 꺼졌나? - 앱 화면 → Watchdog이 SIGTERM으로 종료**
 
@@ -481,8 +481,12 @@ exit=143
 
 </details>
 
+</details>
 
-### CPU · 3. Root Cause Analysis (원인 분석)
+<details>
+<summary><b>3. 원인</b> · Root Cause Analysis</summary>
+
+<br>
 
 ![CPU 과점유 개념](images/02-cpu-watchdog.svg)
 
@@ -498,7 +502,12 @@ exit=143
 - 그 결과 sshd(원격 접속), 웹 서버, 관제 스크립트까지 **응답이 느려집니다**. 서버 전체를 재부팅하면 모든 서비스가 멈추지만, **범인 하나만 끄면** 나머지는 바로 정상으로 돌아옵니다.
 - 이 앱은 스스로 `nice=10`으로 우선순위를 낮추는 `SafetyGuard`도 가지고 있습니다. 우선순위를 낮춰도 위험하다고 판단되면 Watchdog이 마지막 수단으로 종료합니다.
 
-### CPU · 4. Workaround & Verification (조치 및 검증)
+</details>
+
+<details>
+<summary><b>4. 조치 · 검증</b> · Workaround & Verification</summary>
+
+<br>
 
 #### 조치: `CPU_MAX_OCCUPY`를 100 → 40으로 하향 (앱 권장값 50 미만)
 
@@ -535,29 +544,28 @@ After 실행의 핵심 구간:
 
 <br>
 
+</details>
+
+<br>
+
 ## 🟣 리포트 3. Deadlock
 
 > **Issue 제목** · [Bug] Deadlock - 멀티스레드 모드에서 두 스레드가 서로의 자원을 기다리며 12분 넘게 무응답
 
-> **요약**
-> - Thread-1은 A를 쥐고 B를, Thread-2는 B를 쥐고 A를 기다려 **서로가 서로를 기다리는 원**이 생겼다.
-> - 프로세스는 살아 있었지만 CPU 0% · 메모리 고정 · **로그 0줄로 12분 29초** 동안 멈춰 있었다.
-> - 멀티스레드를 끄자 기다릴 상대가 없어져 **데드락이 사라졌다.**
+| 한 장 요약 | |
+|:--|:--|
+| 🩺 **현상** | 꺼지지 않고 **멈춤** - 12분 29초 동안 로그 0줄 → 사람이 Ctrl+C |
+| 🔎 **증거** | PID 살아 있음 + 스레드 3개 모두 CPU 0% + 로그가 멈춘 시간(LOG_AGE) **748초** (정상 최대 3초) · 마지막 로그는 두 스레드 모두 `BLOCKED` |
+| 🧠 **원인** | Thread-1은 A를 쥐고 B를, Thread-2는 B를 쥐고 A를 기다림 → **순환 대기**(데드락) |
+| 🛠 **조치** | `MULTI_THREAD_ENABLE` true → **false** → 서로 기다릴 일꾼이 없어 8분 동안 로그가 계속 쌓임 |
+| 📋 **기록** | PID 2916 · 2026-11-20 16:13:33 시작 → 16:13:42 이후 정지 → 16:26:11 Ctrl+C · 재현 `MULTI_THREAD_ENABLE=true` |
 
-| 항목 | 내용 |
-|---|---|
-| 장애 유형 | 교착상태 (Deadlock) → 프로세스는 살아 있으나 무응답 |
-| 대상 | `agent-leak-app-x86` · PID **2916** (부모 2915) · 스레드 3개 |
-| 발생 시각 | 2026-11-20 16:13:33 시작 → **16:13:42 이후 로그 정지** → 16:26:11 Ctrl+C (약 12분 29초 정지) |
-| 환경 | UTM VM, Ubuntu Server 22.04.5 (x86_64), CPU 2코어, RAM 4GB, 계정 `arang` |
-| 재현 조건 | `MULTI_THREAD_ENABLE=true` (나머지는 정상값 `MEMORY_LIMIT=512`, `CPU_MAX_OCCUPY=40`) |
-| 조치 | `MULTI_THREAD_ENABLE=false` → 데드락 없이 **8분 동안 로그가 계속 쌓임** 확인 |
+![LOG_AGE 그래프](images/chart_deadlock.png)
 
-![Deadlock 발생 과정](images/05-deadlock-timeline.svg)
+<details>
+<summary><b>1. 현상</b> · Description</summary>
 
----
-
-### Deadlock · 1. Description (현상 설명)
+<br>
 
 - **무엇이:** 앱을 켜고 약 9초 뒤 `WAITING ... (Status: BLOCKED)` 두 줄을 끝으로 **로그가 완전히 멈췄습니다.** 프로세스는 꺼지지 않았고, 화면도 반응이 없었습니다.
 - **OOM·CPU와 다른 점:** 앞의 두 장애는 프로세스가 **사라졌지만**, 이번에는 **살아 있는데 아무 일도 안 하는** 상태입니다. 그래서 "죽었나?"만 확인하는 관제로는 발견되지 않습니다.
@@ -568,7 +576,12 @@ After 실행의 핵심 구간:
 cd ~/agent-app; MULTI_THREAD_ENABLE=true ./agent-leak-app-x86; echo "exit=$?"
 ```
 
-### Deadlock · 2. Evidence & Logs (증거 자료)
+</details>
+
+<details>
+<summary><b>2. 증거</b> · Evidence & Logs · 질문 흐름 · 스크린샷 5장</summary>
+
+<br>
 
 > 진단은 **질문 4개를 순서대로** 했습니다. 질문 하나에 도구 하나를 쓰고, 그 답이 다음 질문을 정합니다.
 > **살아 있나? → 일하고 있나? → 언제부터 멈췄나? → 무엇을 기다리나?** ([2-3 진단 순서](#2-3-살아-있지만-멈춘-상태의-진단-순서))
@@ -617,7 +630,7 @@ Threads:   3 total,   0 running,   3 sleeping
 
 <img src="screenshots/3_deadlock/3-2_deadlock_monitor.png" width="720">
 
-![LOG_AGE 그래프](images/chart_deadlock.png)
+> 📈 LOG_AGE Before & After 그래프는 이 리포트 맨 위에 있습니다.
 
 - `LOG_AGE`는 monitor.sh가 앱 로그 파일의 마지막 수정 시각을 보고 계산한 값입니다. 정상이면 0~3초를 오가는데, 여기서는 **0초 → 748초(12분 28초)까지 쉬지 않고 증가**했습니다. (16:26:11에 0초로 돌아간 것은 Ctrl+C를 눌러 앱이 종료 로그를 썼기 때문입니다.)
 - CPU 0%, RSS 17MB, 스레드 3개가 12분 동안 **한 번도 변하지 않았습니다.**
@@ -663,7 +676,12 @@ Threads:   3 total,   0 running,   3 sleeping
 
 </details>
 
-### Deadlock · 3. Root Cause Analysis (원인 분석)
+</details>
+
+<details>
+<summary><b>3. 원인</b> · Root Cause Analysis · 스크린샷 1장</summary>
+
+<br>
 
 #### 로그로 추적한 순환 의존 (A→B, B→A)
 
@@ -710,7 +728,12 @@ exit=0
 
 <img src="screenshots/3_deadlock/3-6_deadlock_ctrl_c.png" width="720">
 
-### Deadlock · 4. Workaround & Verification (조치 및 검증)
+</details>
+
+<details>
+<summary><b>4. 조치 · 검증</b> · Workaround & Verification</summary>
+
+<br>
 
 #### 조치: `MULTI_THREAD_ENABLE`을 true → false
 
@@ -742,28 +765,34 @@ cd ~/agent-app; ./agent-leak-app-x86      # ~/.bashrc 기본값 MULTI_THREAD_ENA
 
 <br>
 
+</details>
+
+<br>
+
 ---
 
 # Part 3. 평가표 기준 설명
 
-> 평가표 질문 **원문 순서**대로 답했습니다. 항목 1(결과물)의 근거는 Part 2 리포트에 있어서, 답과 함께 **근거 위치**를 링크했습니다.
+> 평가표 질문 **원문 순서**대로 답했습니다. 항목 1(결과물)은 Part 2 리포트 자체가 답이라 표 한 줄로, 항목 2~4는 질문마다 💬 말할 내용과 근거로 정리했습니다.
 
 ## ✅ 한눈에 보는 답 (20문항)
 
-> 번호를 누르면 자세한 답으로 이동합니다.
+> 항목 1은 **근거** 칸을 누르면 리포트로, 항목 2~4는 번호를 누르면 자세한 답으로 이동합니다.
 
 #### 항목 1. 결과물 - 증거가 있는가
 
-| # | 질문 | 답 | 핵심 증거 |
-|:--:|:--|:--:|:--|
-| [1-1](#1-1-oom-메모리-선형-증가--강제-종료-패턴) | OOM 선형 증가 → 강제 종료 패턴 | ✅ | RSS 17 → 143MB (3초마다 25MB) → `MemoryGuard Self-terminating process 2363` |
-| [1-2](#1-2-oom-memory_limit-조정-before--after) | `MEMORY_LIMIT` Before & After | ✅ | 128 → **17초** 종료 / 512 → **8분 이상** 생존 |
-| [1-3](#1-3-cpu-임계치-초과--종료-패턴) | CPU 임계치 초과 → 종료 패턴 | ✅ | Load 51.22% → `CPU Threshold Violated!` → `WATCHDOG (SIGTERM)` · exit=143 |
-| [1-4](#1-4-cpu-cpu_max_occupy-조정-before--after) | `CPU_MAX_OCCUPY` Before & After | ✅ | 100 → **46초** 종료 / 40 → **8분 이상** 생존 |
-| [1-5](#1-5-deadlock-살아-있지만-멈춘-상태-식별) | 살아 있지만 멈춘 상태 식별 | ✅ | PID 2916 존재 · 스레드 3개 CPU 0% · LOG_AGE 0 → 748초 |
-| [1-6](#1-6-deadlock-multi_thread_enable-재현과-회피) | `MULTI_THREAD_ENABLE` 재현/회피 | ✅ | true → 12분 29초 멈춤 / false → 로그 계속 쌓임 |
-| [1-7](#1-7-format-리포트-3건의-issue-구조) | 리포트 4칸 구조 | ✅ | 3건 모두 현상 → 증거 → 원인 → 조치 |
-| [1-8](#1-8-evidence-pid--타임스탬프--핵심-로그-증거) | PID · 시각 · 로그 증거 | ✅ | 스크린샷 16장 + 로그 원본 8개 |
+| # | 질문 | 답 | 핵심 증거 | 근거 |
+|:--:|:--|:--:|:--|:--|
+| 1-1 | OOM 선형 증가 → 강제 종료 패턴 | ✅ | RSS 17 → 143MB (3초마다 25MB) → `MemoryGuard Self-terminating process 2363` | [🔴 OOM](#-리포트-1-oom) |
+| 1-2 | `MEMORY_LIMIT` Before & After | ✅ | 128 → **17초** 종료 / 512 → **8분 이상** 생존 | [🔴 OOM](#-리포트-1-oom) |
+| 1-3 | CPU 임계치 초과 → 종료 패턴 | ✅ | Load 51.22% → `CPU Threshold Violated!` → `WATCHDOG (SIGTERM)` · exit=143 | [🟠 CPU](#-리포트-2-cpu-spike) |
+| 1-4 | `CPU_MAX_OCCUPY` Before & After | ✅ | 100 → **46초** 종료 / 40 → **8분 이상** 생존 | [🟠 CPU](#-리포트-2-cpu-spike) |
+| 1-5 | 살아 있지만 멈춘 상태 식별 | ✅ | PID 2916 존재 · 스레드 3개 CPU 0% · LOG_AGE 0 → 748초 | [🟣 Deadlock](#-리포트-3-deadlock) |
+| 1-6 | `MULTI_THREAD_ENABLE` 재현/회피 | ✅ | true → 12분 29초 멈춤 / false → 로그 계속 쌓임 | [🟣 Deadlock](#-리포트-3-deadlock) |
+| 1-7 | 리포트 4칸 구조 | ✅ | 3건 모두 현상 → 증거 → 원인 → 조치 | [Part 2](#part-2-장애-리포트-3건) |
+| 1-8 | PID · 시각 · 로그 증거 | ✅ | 스크린샷 16장 + 로그 원본 8개 | [Part 2](#part-2-장애-리포트-3건) |
+
+> 스크린샷은 모두 내 VM 화면에 맥 터미널 틀(제목 = 실제로 친 명령) · 강조 상자 · 근거와 의미 설명을 붙였고, 손대지 않은 원본은 `screenshots/<실험>/original/`에 있습니다. 로그 원본은 [logs/](logs/)
 
 #### 항목 2. 도구와 명령 - 어떻게 쟀는가
 
@@ -791,83 +820,6 @@ cd ~/agent-app; ./agent-leak-app-x86      # ~/.bashrc 기본값 MULTI_THREAD_ENA
 | [4-3](#4-3-oom과-deadlock-동시-발생-시-순서) | 동시 발생 시 순서 | 데드락 증거 1분 저장 → **OOM 먼저**(서버 전체로 번짐) → 데드락 분석 |
 | [4-4](#4-4-코드-레벨-개선) | 코드 레벨 개선 | OOM: 다 쓴 데이터 지우기·캐시 크기 제한 / CPU: 쉬는 시간·작업 나누기 / Deadlock: 잠금 순서·타임아웃 |
 | [4-5](#4-5-다시-한다면-다르게-할-점) | 다르게 할 점 | 재는 대상(부모·자식) 먼저 확인 · 짧은 간격으로 계속 기록 · 앱 값과 OS 값 처음부터 비교 |
-
----
-## 항목 1. 결과물
-
-### 1-1. [OOM] 메모리 선형 증가 → 강제 종료 패턴
-
-> [OOM] 메모리 사용량이 선형적으로 증가하다가 프로세스가 강제 종료되는 패턴이 로그에 기록되어 있는가?
-
-✅ **있음** · PID **2363** · RSS가 3초마다 25MB씩 **17 → 143MB 일직선 증가** → 16:06:38 `MemoryGuard Self-terminating process 2363` → exit=137
-
-➡ 근거: [OOM 리포트 2. 증거](#oom--2-evidence--logs-증거-자료)
-
-### 1-2. [OOM] MEMORY_LIMIT 조정 Before & After
-
-> [OOM] 환경변수(MEMORY_LIMIT) 조정 후 프로세스 생존 시간이 늘어난 Before & After 비교 결과가 있는가?
-
-✅ **있음** · `MEMORY_LIMIT=128` → **17초** 만에 종료 / `512` → **8분 이상** 생존 (525MB마다 스스로 정리)
-
-➡ 근거: [OOM 리포트 4. 조치·검증](#oom--4-workaround--verification-조치-및-검증)
-
-### 1-3. [CPU] 임계치 초과 → 종료 패턴
-
-> [CPU] CPU 사용률이 임계치를 초과하여 프로세스가 종료되는 패턴이 로그에 기록되어 있는가?
-
-✅ **있음** · PID **2606** · Current Load 5 → **51.22%** → 16:09:48 `CPU Threshold Violated!` → `WATCHDOG (SIGTERM)` → exit=143 · 같은 설정 6번 모두 50~57%에서 종료
-
-➡ 근거: [CPU 리포트 2. 증거](#cpu--2-evidence--logs-증거-자료)
-
-### 1-4. [CPU] CPU_MAX_OCCUPY 조정 Before & After
-
-> [CPU] 환경변수(CPU_MAX_OCCUPY) 조정 후 프로세스 종료 여부/생존 시간이 변화한 Before & After 비교 결과가 있는가?
-
-✅ **있음** · `CPU_MAX_OCCUPY=100` → **46초** 만에 종료 / `40` → 종료 없이 **8분 이상** 생존
-
-➡ 근거: [CPU 리포트 4. 조치·검증](#cpu--4-workaround--verification-조치-및-검증)
-
-### 1-5. [Deadlock] 살아 있지만 멈춘 상태 식별
-
-> [Deadlock] 프로세스가 살아있으나(PID 존재) CPU/메모리 변화 없이 로그가 멈춘 상태를 식별했는가?
-
-✅ **식별함** · PID **2916** 존재 + 스레드 3개 모두 `S`·CPU 0.0·TIME+ 0:00.00 + **LOG_AGE 0 → 748초** (정상 최대 3초) → 살아 있지만 멈춤
-
-➡ 근거: [Deadlock 리포트 2. 증거 (Q1 ~ Q4)](#deadlock--2-evidence--logs-증거-자료)
-
-### 1-6. [Deadlock] MULTI_THREAD_ENABLE 재현과 회피
-
-> [Deadlock] 환경변수(MULTI_THREAD_ENABLE) 조정 후 데드락 재현/회피 비교 결과가 있는가?
-
-✅ **있음** · `true` → 12분 29초 동안 로그 0줄(재현) / `false` → 8분 동안 로그 계속 쌓임(회피)
-
-➡ 근거: [Deadlock 리포트 4. 조치·검증](#deadlock--4-workaround--verification-조치-및-검증)
-
-### 1-7. [Format] 리포트 3건의 Issue 구조
-
-> [Format] 3건의 리포트 모두 GitHub Issue 구조(현상 → 증거 → 원인 → 조치)를 갖추고 있는가?
-
-✅ **갖춤** - 3건 모두 맨 위 요약 + 같은 4칸 구조입니다. → [Part 2](#part-2-장애-리포트-3건)
-
-| 리포트 | 1. 현상 | 2. 증거 | 3. 원인 | 4. 조치 · 검증 |
-|:--|:--:|:--:|:--:|:--:|
-| [🔴 OOM](#-리포트-1-oom) | [✅](#oom--1-description-현상-설명) | [✅](#oom--2-evidence--logs-증거-자료) | [✅](#oom--3-root-cause-analysis-원인-분석) | [✅](#oom--4-workaround--verification-조치-및-검증) |
-| [🟠 CPU Spike](#-리포트-2-cpu-spike) | [✅](#cpu--1-description-현상-설명) | [✅](#cpu--2-evidence--logs-증거-자료) | [✅](#cpu--3-root-cause-analysis-원인-분석) | [✅](#cpu--4-workaround--verification-조치-및-검증) |
-| [🟣 Deadlock](#-리포트-3-deadlock) | [✅](#deadlock--1-description-현상-설명) | [✅](#deadlock--2-evidence--logs-증거-자료) | [✅](#deadlock--3-root-cause-analysis-원인-분석) | [✅](#deadlock--4-workaround--verification-조치-및-검증) |
-
-### 1-8. [Evidence] PID · 타임스탬프 · 핵심 로그 증거
-
-> [Evidence] 리포트에 PID, 로그 타임스탬프, 핵심 로그 메시지가 포함된 증거(스크린샷 또는 로그 발췌)가 첨부되어 있는가?
-
-✅ **포함** - 스크린샷 16장 + 로그 원본 8개([logs/](logs/)). 스크린샷은 모두 **내 VM에서 직접 찍은 화면**에 맥 터미널 틀(제목 = 실제로 친 명령), 강조 상자, 근거·의미 설명을 붙였고, 원본은 `screenshots/<실험>/original/`에 있습니다.
-
-| 리포트 | PID | 핵심 로그 (타임스탬프) | 스크린샷 위치 |
-|:--|:--:|:--|:--|
-| 🔴 OOM | 2363 | `16:06:38,955 Self-terminating process 2363` | [증거](#oom--2-evidence--logs-증거-자료) 1-1 · 1-2 / [조치](#oom--4-workaround--verification-조치-및-검증) 4-1 · 4-2 |
-| 🟠 CPU | 2606 | `16:09:48,939 CPU Threshold Violated!` | [증거](#cpu--2-evidence--logs-증거-자료) 2-1 · 2-2 · 2-3 |
-| 🟣 Deadlock | 2916 | `16:13:42,760 WAITING ... (Status: BLOCKED)` | [증거](#deadlock--2-evidence--logs-증거-자료) 3-1 ~ 3-5 / [원인](#deadlock--3-root-cause-analysis-원인-분석) 3-6 |
-| 실행 환경 | - | `[1/6] ~ [6/6] [OK]` · 부모·자식 프로세스 | [Part 1 지급된 프로그램](#-지급된-프로그램-agent-leak-app) 0-1 · 0-2 · 0-3 |
-
 
 ## 항목 2. 도구와 명령
 
@@ -957,7 +909,7 @@ cd ~/agent-app; ./agent-leak-app-x86      # ~/.bashrc 기본값 MULTI_THREAD_ENA
 
 > 로그에서 스레드 간 순환 의존 관계(A→B, B→A)를 어떻게 파악했는지 추적 과정을 설명할 수 있는가?
 
-그림: [Deadlock 리포트 3. 원인](#deadlock--3-root-cause-analysis-원인-분석)의 「로그 → 순환 대기」 그림
+그림: [Deadlock 리포트 3. 원인](#-리포트-3-deadlock)의 「로그 → 순환 대기」 그림
 
 💬 "마지막 로그를 **스레드 이름별로 나눠서** 시간순으로 읽었습니다."
 
@@ -1283,9 +1235,9 @@ cp ~/agent-app/logs/agent_app.log ~/results/1_oom_app.log; cp ~/agent-app/logs/m
 cd ~/agent-app; MEMORY_LIMIT=128 ./agent-leak-app-x86; echo "exit=$?"
 ```
 
-📸 **1-1** 앱 화면 - Heap 25MB씩 증가 → `Memory limit exceeded` → `SELF-TERMINATED` → `Killed` → `exit=137` → [OOM 리포트 2. 증거](#oom--2-evidence--logs-증거-자료)
+📸 **1-1** 앱 화면 - Heap 25MB씩 증가 → `Memory limit exceeded` → `SELF-TERMINATED` → `Killed` → `exit=137` → [OOM 리포트 2. 증거](#-리포트-1-oom)
 
-📸 **1-2** monitor.sh - RSS 17 → 42 → 68 → 93 → 118 → 143MB → `PROCESS NOT FOUND` → [OOM 리포트 2. 증거](#oom--2-evidence--logs-증거-자료)
+📸 **1-2** monitor.sh - RSS 17 → 42 → 68 → 93 → 118 → 143MB → `PROCESS NOT FOUND` → [OOM 리포트 2. 증거](#-리포트-1-oom)
 
 > 앱이 죽인 PID(`process 2363`)와 monitor.sh가 잰 PID(`PID:2363`)가 같습니다. → [리포트](#-리포트-1-oom)
 
@@ -1296,9 +1248,9 @@ cd ~/agent-app; MEMORY_LIMIT=128 ./agent-leak-app-x86; echo "exit=$?"
 cd ~/agent-app; CPU_MAX_OCCUPY=100 ./agent-leak-app-x86; echo "exit=$?"
 ```
 
-📸 **2-1** 앱 화면 - Current Load 5% → 51.22% → `CPU Threshold Violated!` → `WATCHDOG ... SIGTERM` → `exit=143` → [CPU 리포트 2. 증거](#cpu--2-evidence--logs-증거-자료)
+📸 **2-1** 앱 화면 - Current Load 5% → 51.22% → `CPU Threshold Violated!` → `WATCHDOG ... SIGTERM` → `exit=143` → [CPU 리포트 2. 증거](#-리포트-2-cpu-spike)
 
-📸 **2-2** monitor.sh - 같은 시간 **실제 CPU는 0~10%** → [CPU 리포트 2. 증거](#cpu--2-evidence--logs-증거-자료)
+📸 **2-2** monitor.sh - 같은 시간 **실제 CPU는 0~10%** → [CPU 리포트 2. 증거](#-리포트-2-cpu-spike)
 
 > 앱이 보고한 부하와 실제 CPU가 다릅니다. Watchdog은 **앱 내부 수치**를 보고 껐습니다. → [리포트](#-리포트-2-cpu-spike)
 
@@ -1322,17 +1274,17 @@ ps -L -o pid,lwp,stat,pcpu,rss,etime -p $(pgrep -n -f agent-leak-app-x86)
 top -H -p $(pgrep -n -f agent-leak-app-x86)
 ```
 
-📸 **3-1** 앱 화면 - 마지막 로그 `WAITING for ... (Status: BLOCKED)` 두 줄 → [Deadlock 리포트 2. 증거](#deadlock--2-evidence--logs-증거-자료)
+📸 **3-1** 앱 화면 - 마지막 로그 `WAITING for ... (Status: BLOCKED)` 두 줄 → [Deadlock 리포트 2. 증거](#-리포트-3-deadlock)
 
-📸 **3-2** monitor.sh - CPU 0% · RSS 17MB 그대로, **LOG_AGE만 계속 증가** → [Deadlock 리포트 2. 증거](#deadlock--2-evidence--logs-증거-자료)
+📸 **3-2** monitor.sh - CPU 0% · RSS 17MB 그대로, **LOG_AGE만 계속 증가** → [Deadlock 리포트 2. 증거](#-리포트-3-deadlock)
 
-📸 **3-3** `ps -ef` - PID 2915, 2916 살아 있음 → [Deadlock 리포트 2. 증거](#deadlock--2-evidence--logs-증거-자료)
+📸 **3-3** `ps -ef` - PID 2915, 2916 살아 있음 → [Deadlock 리포트 2. 증거](#-리포트-3-deadlock)
 
-📸 **3-4** `ps -L` - 스레드 3개 모두 `SNl+`, `%CPU 0.0` → [Deadlock 리포트 2. 증거](#deadlock--2-evidence--logs-증거-자료)
+📸 **3-4** `ps -L` - 스레드 3개 모두 `SNl+`, `%CPU 0.0` → [Deadlock 리포트 2. 증거](#-리포트-3-deadlock)
 
-📸 **3-5** `top -H` - 스레드 3개 모두 `S`, `TIME+ 0:00.00` (CPU를 1초도 안 씀) → [Deadlock 리포트 2. 증거](#deadlock--2-evidence--logs-증거-자료)
+📸 **3-5** `top -H` - 스레드 3개 모두 `S`, `TIME+ 0:00.00` (CPU를 1초도 안 씀) → [Deadlock 리포트 2. 증거](#-리포트-3-deadlock)
 
-📸 **3-6** Ctrl+C - 메인 스레드가 일꾼 스레드를 기다리다 끊김 (`threading ... _shutdown`) → [Deadlock 리포트 3. 원인](#deadlock--3-root-cause-analysis-원인-분석)
+📸 **3-6** Ctrl+C - 메인 스레드가 일꾼 스레드를 기다리다 끊김 (`threading ... _shutdown`) → [Deadlock 리포트 3. 원인](#-리포트-3-deadlock)
 
 > → [리포트](#-리포트-3-deadlock)
 
@@ -1343,9 +1295,9 @@ top -H -p $(pgrep -n -f agent-leak-app-x86)
 cd ~/agent-app; ./agent-leak-app-x86; echo "exit=$?"
 ```
 
-📸 **4-1** 앱 화면 - 525MB → `Starting cleanup...` → `MEMORY RECOVERED` → [OOM 리포트 4. 조치](#oom--4-workaround--verification-조치-및-검증)
+📸 **4-1** 앱 화면 - 525MB → `Starting cleanup...` → `MEMORY RECOVERED` → [OOM 리포트 4. 조치](#-리포트-1-oom)
 
-📸 **4-2** monitor.sh - 정리 순간 RSS 517MB → 67MB → [OOM 리포트 4. 조치](#oom--4-workaround--verification-조치-및-검증)
+📸 **4-2** monitor.sh - 정리 순간 RSS 517MB → 67MB → [OOM 리포트 4. 조치](#-리포트-1-oom)
 
 > 메모리 정리 7번, CPU 식히기 10번, 8분 내내 로그가 쌓였습니다(LOG_AGE 0~3초).
 > 끌 때 Ctrl+C를 두 번 눌러야 했지만(`exit=1`) 실험 결과와는 관계없습니다.
